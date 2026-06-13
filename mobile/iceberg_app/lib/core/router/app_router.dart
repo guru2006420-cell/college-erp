@@ -95,32 +95,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state, navigationShell) =>
             StaffShell(navigationShell: navigationShell),
         branches: [
-          // 0 · Home + drill-downs (notifications, messages, profile)
+          // 0 · Dashboard
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/staff/home',
               builder: (_, __) => const StaffHomeScreen(),
-              routes: [
-                GoRoute(
-                  path: 'notifications',
-                  builder: (_, __) => const StaffNotificationsScreen(),
-                ),
-                GoRoute(
-                  path: 'messages',
-                  builder: (_, __) => const MessagesScreen(),
-                ),
-                GoRoute(
-                  path: 'profile',
-                  builder: (_, __) => const ProfileHubScreen(),
-                ),
-              ],
             ),
           ]),
-          // 1 · Classes
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/staff/classes', builder: (_, __) => const StaffClassesScreen()),
-          ]),
-          // 2 · Attendance + update
+          // 1 · Attendance + update
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/staff/attendance',
@@ -133,19 +115,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ],
             ),
           ]),
+          // 2 · Results
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/staff/results', builder: (_, __) => const StaffResultsScreen()),
+          ]),
           // 3 · Assignments
           StatefulShellBranch(routes: [
             GoRoute(path: '/staff/assignments', builder: (_, __) => const StaffAssignmentsScreen()),
           ]),
-          // 4 · More menu (links push the screens below onto the root stack)
+          // 4 · Profile
           StatefulShellBranch(routes: [
-            GoRoute(path: '/staff/more', builder: (_, __) => const StaffMoreScreen()),
+            GoRoute(path: '/staff/profile', builder: (_, __) => const ProfileHubScreen()),
           ]),
         ],
       ),
-      // Staff feature screens reached from the More menu (pushed full-screen;
-      // each shows its own back affordance).
-      GoRoute(path: '/staff/results',       builder: (_, __) => const StaffResultsScreen()),
+      // Staff standalone screens (pushed full-screen; each shows its own back affordance).
+      GoRoute(path: '/staff/classes',       builder: (_, __) => const StaffClassesScreen()),
+      GoRoute(path: '/staff/more',          builder: (_, __) => const StaffMoreScreen()),
       GoRoute(path: '/staff/vocabulary',    builder: (_, __) => const StaffVocabularyScreen()),
       GoRoute(
         path: '/staff/vocabulary/:id',
@@ -156,7 +142,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
       GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
       GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
-      GoRoute(path: '/staff/profile',       builder: (_, __) => const ProfileHubScreen()),
       GoRoute(path: '/staff/settings',      builder: (_, __) => const ProfileHubScreen()),
       GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
 

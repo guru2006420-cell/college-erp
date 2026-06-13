@@ -375,177 +375,288 @@ class StaffAttendanceScreen extends ConsumerStatefulWidget {
 }
 
 class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
+  static const _bg     = Color(0xFF081A20);
+  static const _surf   = Color(0xFF0F2530);
+  static const _card   = Color(0xFF132D38);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _lime   = Color(0xFFDFFF2F);
+  static const _white  = Colors.white;
+  static const _muted  = Color(0xFF7A9BAA);
+
   int? _groupId;
   DateTime _date = DateTime.now();
-  final Map<int, int> _status = {}; // studentId -> 0 absent / 1 present / 2 late
+  final Map<int, String> _status = {}; // studentId -> ‘P’/’L’/’A’
   bool _saving = false;
 
   Future<void> _save(List students) async {
     if (_groupId == null) return;
     setState(() => _saving = true);
     final records = [
-      for (final s in students)
-        {'student_id': s['id'], 'status': _status[s['id'] as int] ?? 1},
+      for (final s in students) {
+        final st = _status[s[‘id’] as int] ?? ‘P’;
+        {‘student_id’: s[‘id’], ‘status’: st == ‘P’ ? 1 : st == ‘L’ ? 2 : 0}
+      }
     ];
     try {
-      await ApiClient.instance.dio.post('/attendance/', data: {
-        'group_id': _groupId,
-        'date': DateFormat('yyyy-MM-dd').format(_date),
-        'records': records,
+      await ApiClient.instance.dio.post(‘/attendance/’, data: {
+        ‘group_id’: _groupId,
+        ‘date’: DateFormat(‘yyyy-MM-dd’).format(_date),
+        ‘records’: records,
       });
-      if (mounted) _toast(context, 'Attendance saved.');
+      if (mounted) _toast(context, ‘Attendance saved.’);
     } on DioException catch (e) {
       if (mounted) {
-        _toast(context,
-            e.response?.data?['detail']?.toString() ?? 'Could not save.');
+        _toast(context, e.response?.data?[‘detail’]?.toString() ?? ‘Could not save.’);
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  int get _presentCount => _status.values.where((v) => v == ‘P’).length;
+  int get _lateCount    => _status.values.where((v) => v == ‘L’).length;
+  int get _absentCount  => _status.values.where((v) => v == ‘A’).length;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(
-            child: _Header(
-                title: 'Attendance', subtitle: 'Mark today’s class register'),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(children: [
-                _GroupDropdown(
-                  value: _groupId,
-                  onChanged: (v) => setState(() {
-                    _groupId = v;
-                    _status.clear();
-                  }),
-                ),
-                const SizedBox(height: 12),
-                _DatePickerField(
-                  date: _date,
-                  onPick: (d) => setState(() => _date = d),
-                ),
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text(‘Take Attendance’,
+                  style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              const Text(‘Record student presence for today\’s session.’,
+                  style: TextStyle(color: _muted, fontSize: 13)),
+              const SizedBox(height: 16),
+              // Group + Date row
+              Row(children: [
+                Expanded(child: _DarkGroupDropdown(value: _groupId, onChanged: (v) => setState(() { _groupId = v; _status.clear(); }))),
+                const SizedBox(width: 10),
+                Expanded(child: _DarkDatePicker(date: _date, onPick: (d) => setState(() => _date = d))),
               ]),
-            ),
+            ]),
           ),
-          if (_groupId == null)
-            _empty('Pick a group to begin', Icons.event_available_outlined)
-          else
-            _roster(),
-        ],
-      ),
-      floatingActionButton: _groupId == null
-          ? null
-          : Consumer(builder: (context, ref, _) {
+          const SizedBox(height: 12),
+          // Student list
+          Expanded(child: _groupId == null
+            ? Center(child: Text(‘Select a group to begin.’, style: TextStyle(color: _muted)))
+            : Consumer(builder: (context, ref, _) {
+                final detail = ref.watch(groupDetailProvider(_groupId!));
+                return detail.when(
+                  loading: () => const Center(child: CircularProgressIndicator(color: _lime)),
+                  error: (e, _) => Center(child: Text(‘$e’, style: const TextStyle(color: Colors.red))),
+                  data: (d) {
+                    final students = (d[‘enrolled_students’] as List?) ?? [];
+                    if (students.isEmpty) return Center(child: Text(‘No students enrolled.’, style: TextStyle(color: _muted)));
+                    return ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      itemCount: students.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final s = students[i] as Map<String, dynamic>;
+                        final id = s[‘id’] as int;
+                        final initials = _studentName(s).characters.first.toUpperCase();
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: _card, borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: _stroke),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                          child: Row(children: [
+                            CircleAvatar(radius: 18, backgroundColor: _surf,
+                              child: Text(initials, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700))),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(_studentName(s), style: const TextStyle(color: _white, fontWeight: FontWeight.w600, fontSize: 14)),
+                              if (s[‘student_id’] != null)
+                                Text(‘${s[‘student_id’]}’, style: const TextStyle(color: _muted, fontSize: 11)),
+                            ])),
+                            _DarkStatusToggle(
+                              value: _status[id] ?? ‘P’,
+                              onChanged: (v) => setState(() => _status[id] = v),
+                            ),
+                          ]),
+                        );
+                      },
+                    );
+                  },
+                );
+              }),
+          ),
+          // Bottom summary + submit
+          if (_groupId != null)
+            Consumer(builder: (context, ref, _) {
               final detail = ref.watch(groupDetailProvider(_groupId!));
-              final students = detail.maybeWhen(
-                  data: (d) => (d['enrolled_students'] as List?) ?? [],
-                  orElse: () => const []);
+              final students = detail.maybeWhen(data: (d) => (d[‘enrolled_students’] as List?) ?? [], orElse: () => const []);
               if (students.isEmpty) return const SizedBox.shrink();
-              return FloatingActionButton.extended(
-                backgroundColor: IceColors.navyDeep,
-                onPressed: _saving ? null : () => _save(students),
-                icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check_rounded, color: Colors.white),
-                label: const Text('Save',
-                    style: TextStyle(color: Colors.white)),
-              );
-            }),
-    );
-  }
-
-  Widget _roster() {
-    final detail = ref.watch(groupDetailProvider(_groupId!));
-    return detail.when(
-      loading: () => SliverToBoxAdapter(child: _loading()),
-      error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-      data: (d) {
-        final students = (d['enrolled_students'] as List?) ?? [];
-        if (students.isEmpty) {
-          return _empty('No students enrolled', Icons.person_off_outlined);
-        }
-        return SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
-          sliver: SliverList.separated(
-            itemCount: students.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, i) {
-              final s = students[i] as Map<String, dynamic>;
-              final id = s['id'] as int;
-              final st = _status[id] ?? 1;
               return Container(
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: IceColors.border)),
-                padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-                child: Row(children: [
-                  Expanded(
-                    child: Text(_studentName(s),
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                  _StatusToggle(
-                    value: st,
-                    onChanged: (v) => setState(() => _status[id] = v),
+                color: _surf,
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+                    _SummaryChip(‘Present’, _presentCount, Colors.green),
+                    _SummaryChip(‘Late’, _lateCount, const Color(0xFFFFB020)),
+                    _SummaryChip(‘Absent’, _absentCount, Colors.red),
+                  ]),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _lime,
+                        foregroundColor: const Color(0xFF081A20),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: _saving ? null : () => _save(students),
+                      icon: _saving
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF081A20)))
+                          : const Icon(Icons.check_rounded),
+                      label: const Text(‘Submit Attendance’, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    ),
                   ),
                 ]),
               );
-            },
+            }),
+        ]),
+      ),
+    );
+  }
+}
+
+class _DarkGroupDropdown extends ConsumerWidget {
+  final int? value;
+  final ValueChanged<int?> onChanged;
+  const _DarkGroupDropdown({required this.value, required this.onChanged});
+
+  static const _card   = Color(0xFF132D38);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _lime   = Color(0xFFDFFF2F);
+  static const _muted  = Color(0xFF7A9BAA);
+  static const _white  = Colors.white;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groups = ref.watch(staffGroupsProvider);
+    return groups.when(
+      loading: () => const LinearProgressIndicator(color: _lime),
+      error: (e, _) => Text(‘$e’, style: const TextStyle(color: Colors.red)),
+      data: (list) {
+        if (list.isEmpty) return const Text(‘No groups’, style: TextStyle(color: _muted));
+        return DropdownButtonFormField<int>(
+          value: value,
+          isExpanded: true,
+          dropdownColor: _card,
+          style: const TextStyle(color: _white, fontSize: 13),
+          decoration: InputDecoration(
+            labelText: ‘Group’,
+            labelStyle: const TextStyle(color: _muted),
+            filled: true,
+            fillColor: _card,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
           ),
+          items: [for (final g in list) DropdownMenuItem(value: g[‘id’] as int, child: Text(‘${g[‘name’]}’, overflow: TextOverflow.ellipsis))],
+          onChanged: onChanged,
         );
       },
     );
   }
 }
 
-class _StatusToggle extends StatelessWidget {
-  final int value;
-  final ValueChanged<int> onChanged;
-  const _StatusToggle({required this.value, required this.onChanged});
+class _DarkDatePicker extends StatelessWidget {
+  final DateTime date;
+  final ValueChanged<DateTime> onPick;
+  const _DarkDatePicker({required this.date, required this.onPick});
 
-  static const _opts = [
-    (1, 'P', IceColors.success),
-    (0, 'A', IceColors.danger),
-    (2, 'L', IceColors.warning),
-  ];
+  static const _card   = Color(0xFF132D38);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _muted  = Color(0xFF7A9BAA);
+  static const _white  = Colors.white;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final (v, label, color) in _opts)
-          Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: GestureDetector(
-              onTap: () => onChanged(v),
-              child: Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: value == v ? color : color.withAlpha(20),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(label,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: value == v ? Colors.white : color)),
+    return GestureDetector(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: date,
+          firstDate: now.subtract(const Duration(days: 60)),
+          lastDate: now.add(const Duration(days: 30)),
+        );
+        if (picked != null) onPick(picked);
+      },
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: _card, borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _stroke),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(children: [
+          const Icon(Icons.calendar_today_rounded, color: _muted, size: 16),
+          const SizedBox(width: 8),
+          Text(DateFormat(‘MMM d, yyyy’).format(date), style: const TextStyle(color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _DarkStatusToggle extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _DarkStatusToggle({required this.value, required this.onChanged});
+
+  static const _lime   = Color(0xFFDFFF2F);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _bg     = Color(0xFF081A20);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      for (final opt in [‘P’, ‘L’, ‘A’])
+        Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: GestureDetector(
+            onTap: () => onChanged(opt),
+            child: Container(
+              width: 34, height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: value == opt ? _lime : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: value == opt ? _lime : _stroke, width: 1.5),
               ),
+              child: Text(opt, style: TextStyle(
+                fontWeight: FontWeight.w800, fontSize: 12,
+                color: value == opt ? _bg : _stroke,
+              )),
             ),
           ),
-      ],
-    );
+        ),
+    ]);
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  const _SummaryChip(this.label, this.count, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Text(‘$count’, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+      Text(label, style: const TextStyle(color: Color(0xFF7A9BAA), fontSize: 11)),
+    ]);
   }
 }
 
@@ -779,50 +890,90 @@ class _ResultRow extends StatelessWidget {
 //  4 · Assignments  — list own assignments, create new
 // ════════════════════════════════════════════════════════════════════════════
 
-class StaffAssignmentsScreen extends ConsumerWidget {
+class StaffAssignmentsScreen extends ConsumerStatefulWidget {
   const StaffAssignmentsScreen({super.key});
+  @override
+  ConsumerState<StaffAssignmentsScreen> createState() => _StaffAssignmentsScreenState();
+}
+
+class _StaffAssignmentsScreenState extends ConsumerState<StaffAssignmentsScreen> {
+  static const _bg     = Color(0xFF081A20);
+  static const _card   = Color(0xFF132D38);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _lime   = Color(0xFFDFFF2F);
+  static const _muted  = Color(0xFF7A9BAA);
+  static const _white  = Colors.white;
+
+  String _filter = 'Active';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final items = ref.watch(staffAssignmentsProvider);
     return Scaffold(
-      backgroundColor: IceColors.bg,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: IceColors.navyDeep,
+      backgroundColor: _bg,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: _lime,
+        foregroundColor: _bg,
         onPressed: () => _createDialog(context, ref),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New', style: TextStyle(color: Colors.white)),
+        child: const Icon(Icons.add_rounded),
       ),
-      body: RefreshIndicator(
-        color: IceColors.navyDeep,
-        onRefresh: () => ref.refresh(staffAssignmentsProvider.future),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            const SliverToBoxAdapter(
-              child: _Header(
-                  title: 'Assignments', subtitle: 'Tasks you set for groups'),
-            ),
-            items.when(
-              loading: () => SliverToBoxAdapter(child: _loading()),
-              error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-              data: (list) {
-                if (list.isEmpty) {
-                  return _empty('No assignments yet', Icons.assignment_outlined);
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  sliver: SliverList.separated(
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) =>
-                        _AssignmentCard(a: list[i] as Map<String, dynamic>),
+      body: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Assignments', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              const Text('Manage and track student assignments', style: TextStyle(color: _muted, fontSize: 13)),
+              const SizedBox(height: 14),
+              // Filter chips
+              Row(children: [
+                for (final f in ['Active', 'Scheduled', 'Drafts'])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _filter = f),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _filter == f ? _lime : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _filter == f ? _lime : _stroke),
+                        ),
+                        child: Text(f, style: TextStyle(
+                          color: _filter == f ? _bg : _muted,
+                          fontSize: 13, fontWeight: FontWeight.w700,
+                        )),
+                      ),
+                    ),
                   ),
-                );
-              },
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: RefreshIndicator(
+              color: _lime,
+              onRefresh: () => ref.refresh(staffAssignmentsProvider.future),
+              child: items.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: _lime)),
+                error: (e, _) => Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return const Center(child: Text('No assignments yet.', style: TextStyle(color: _muted)));
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _DarkAssignmentCard(a: list[i] as Map<String, dynamic>),
+                  );
+                },
+              ),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -838,64 +989,62 @@ class StaffAssignmentsScreen extends ConsumerWidget {
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setLocal) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('New assignment',
-              style: TextStyle(fontWeight: FontWeight.w800)),
+          backgroundColor: _card,
+          title: const Text('New assignment', style: TextStyle(fontWeight: FontWeight.w800, color: _white)),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _GroupDropdown(
-                  value: groupId, onChanged: (v) => setLocal(() => groupId = v)),
-              const SizedBox(height: 10),
-              TextField(controller: titleC, decoration: _dec('Title')),
+              _DarkGroupDropdown(value: groupId, onChanged: (v) => setLocal(() => groupId = v)),
               const SizedBox(height: 10),
               TextField(
-                  controller: descC,
-                  maxLines: 3,
-                  decoration: _dec('Description', hint: 'Optional')),
-              const SizedBox(height: 10),
-              _DatePickerField(
-                date: due,
-                label: 'Due date',
-                onPick: (d) => setLocal(() => due = d),
+                controller: titleC,
+                style: const TextStyle(color: _white),
+                decoration: InputDecoration(
+                  labelText: 'Title', labelStyle: const TextStyle(color: _muted),
+                  filled: true, fillColor: const Color(0xFF081A20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+                ),
               ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: descC, maxLines: 3,
+                style: const TextStyle(color: _white),
+                decoration: InputDecoration(
+                  labelText: 'Description', labelStyle: const TextStyle(color: _muted),
+                  hintText: 'Optional', hintStyle: const TextStyle(color: _muted),
+                  filled: true, fillColor: const Color(0xFF081A20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _DarkDatePicker(date: due ?? DateTime.now(), onPick: (d) => setLocal(() => due = d)),
             ]),
           ),
           actions: [
-            TextButton(
-                onPressed: saving ? null : () => Navigator.pop(dctx),
-                child: const Text('Cancel')),
-            FilledButton(
-              style:
-                  FilledButton.styleFrom(backgroundColor: IceColors.navyDeep),
-              onPressed: saving
-                  ? null
-                  : () async {
-                      if (groupId == null || titleC.text.trim().isEmpty) {
-                        _toast(dctx, 'Pick a group and enter a title.');
-                        return;
-                      }
-                      setLocal(() => saving = true);
-                      try {
-                        await ApiClient.instance.dio.post('/assignments/',
-                            data: {
-                              'group': groupId,
-                              'title': titleC.text.trim(),
-                              'description': descC.text.trim(),
-                              if (due != null)
-                                'due_date': DateFormat('yyyy-MM-dd').format(due!),
-                            });
-                        ref.invalidate(staffAssignmentsProvider);
-                        if (dctx.mounted) Navigator.pop(dctx);
-                      } on DioException catch (e) {
-                        setLocal(() => saving = false);
-                        if (dctx.mounted) {
-                          _toast(
-                              dctx,
-                              e.response?.data?['detail']?.toString() ??
-                                  'Could not create.');
-                        }
-                      }
-                    },
+            TextButton(onPressed: saving ? null : () => Navigator.pop(dctx), child: const Text('Cancel', style: TextStyle(color: _muted))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _lime, foregroundColor: _bg),
+              onPressed: saving ? null : () async {
+                if (groupId == null || titleC.text.trim().isEmpty) {
+                  _toast(dctx, 'Pick a group and enter a title.');
+                  return;
+                }
+                setLocal(() => saving = true);
+                try {
+                  await ApiClient.instance.dio.post('/assignments/', data: {
+                    'group': groupId,
+                    'title': titleC.text.trim(),
+                    'description': descC.text.trim(),
+                    if (due != null) 'due_date': DateFormat('yyyy-MM-dd').format(due!),
+                  });
+                  ref.invalidate(staffAssignmentsProvider);
+                  if (dctx.mounted) Navigator.pop(dctx);
+                } on DioException catch (e) {
+                  setLocal(() => saving = false);
+                  if (dctx.mounted) _toast(dctx, e.response?.data?['detail']?.toString() ?? 'Could not create.');
+                }
+              },
               child: const Text('Create'),
             ),
           ],
@@ -905,54 +1054,97 @@ class StaffAssignmentsScreen extends ConsumerWidget {
   }
 }
 
-class _AssignmentCard extends StatelessWidget {
+class _DarkAssignmentCard extends StatelessWidget {
   final Map<String, dynamic> a;
-  const _AssignmentCard({required this.a});
+  const _DarkAssignmentCard({required this.a});
+
+  static const _bg     = Color(0xFF081A20);
+  static const _card   = Color(0xFF132D38);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _lime   = Color(0xFFDFFF2F);
+  static const _muted  = Color(0xFF7A9BAA);
+  static const _white  = Colors.white;
 
   @override
   Widget build(BuildContext context) {
     final due = a['due_date']?.toString();
+    final groupName = a['group_name']?.toString();
+    final submitted = a['submitted_count'] as int? ?? 0;
+    final total = a['total_students'] as int? ?? 30;
+    final progress = total > 0 ? submitted / total : 0.0;
+
     return Container(
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: IceColors.border)),
+        color: _card, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _stroke),
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.assignment_rounded,
-              color: IceColors.navyDeep, size: 20),
-          const SizedBox(width: 8),
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.assignment_rounded, color: Color(0xFF7A9BAA), size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(a['title']?.toString() ?? 'Assignment',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 15)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(a['title']?.toString() ?? 'Assignment',
+                  style: const TextStyle(color: _white, fontWeight: FontWeight.w800, fontSize: 15)),
+              if (due != null && due.isNotEmpty)
+                Text('Due $due', style: const TextStyle(color: _muted, fontSize: 12)),
+            ]),
+          ),
+          RichText(
+            text: TextSpan(children: [
+              TextSpan(text: '$submitted', style: const TextStyle(color: _lime, fontWeight: FontWeight.w900, fontSize: 16)),
+              TextSpan(text: ' /$total', style: const TextStyle(color: _muted, fontSize: 13)),
+            ]),
           ),
         ]),
-        if ((a['description']?.toString() ?? '').isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(a['description'].toString(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: IceColors.muted)),
-        ],
         const SizedBox(height: 10),
-        Row(children: [
-          if (a['group_name'] != null) ...[
-            const Icon(Icons.group_rounded, size: 14, color: IceColors.muted),
-            const SizedBox(width: 4),
-            Text(a['group_name'].toString(),
-                style: const TextStyle(fontSize: 12, color: IceColors.muted)),
-            const SizedBox(width: 12),
-          ],
-          if (due != null && due.isNotEmpty) ...[
-            const Icon(Icons.event_rounded, size: 14, color: IceColors.muted),
-            const SizedBox(width: 4),
-            Text('Due ${fmtDate(due)}',
-                style: const TextStyle(fontSize: 12, color: IceColors.muted)),
-          ],
+        // Tags
+        Wrap(spacing: 6, runSpacing: 4, children: [
+          if (groupName != null)
+            _Tag(groupName.toUpperCase()),
+          if (a['subject'] != null)
+            _Tag(a['subject'].toString().toUpperCase()),
         ]),
+        const SizedBox(height: 10),
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            backgroundColor: _bg,
+            valueColor: const AlwaysStoppedAnimation(_lime),
+            minHeight: 4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text('Submitted', style: TextStyle(color: _muted, fontSize: 10)),
       ]),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  const _Tag(this.label);
+
+  static const _bg     = Color(0xFF081A20);
+  static const _stroke = Color(0xFF1E3D4A);
+  static const _white  = Colors.white;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _bg, borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _stroke),
+      ),
+      child: Text(label, style: const TextStyle(color: _white, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }

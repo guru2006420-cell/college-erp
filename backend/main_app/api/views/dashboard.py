@@ -11,8 +11,10 @@ from rest_framework.views import APIView
 
 from ... import branching
 from ...models import (
-    AttendanceReport, Branch, Course, CustomUser, DashboardStory, Enrollment,
-    Group, RegistrationLead, Staff, Student, StudentResult,
+    Assignment, AttendanceReport, Branch, Course, CustomUser, DashboardStory,
+    Enrollment, Group, LeaderboardSeason, LeaderboardSnapshot, Notification,
+    RegistrationLead, Staff, Student, StudentResult, Submission,
+    VocabularyDay,
 )
 from ..permissions import IsAdmin
 from ..serializers import EnrollmentSerializer, GroupSerializer, UserSerializer
@@ -157,39 +159,96 @@ class StudentDashboardView(APIView):
         if cached is not None:
             return Response(cached)
 
+        from django.utils import timezone as tz
+
         try:
             student = user.student
         except Student.DoesNotExist:
             return Response({
+                "rank": None, "tier": "", "streak_days": 0,
                 "attendance_percentage": None, "total_subjects": 0,
-                "average_score": None, "enrolled_groups": 0, "notices": [],
+                "average_score": None, "enrolled_groups": 0,
+                "pending_assignments": 0, "unread_notifications": 0,
+                "new_vocab_words": 0, "performance_trend": [],
+                "notices": [], "stories": [], "assignments_preview": [],
             })
 
+        # Attendance
         reports = AttendanceReport.objects.filter(student=student)
         total = reports.count()
         present = reports.filter(status=AttendanceReport.PRESENT).count()
         att_pct = round(present / total * 100, 1) if total > 0 else None
 
+        # Enrollments
         enrollments = Enrollment.objects.filter(
             student=student, is_active=True
         ).select_related("group__course")
         enrolled_count = enrollments.count()
         course_ids = {e.group.course_id for e in enrollments if e.group.course_id}
         total_subjects = len(course_ids) if course_ids else enrolled_count
+        enrolled_group_ids = [e.group_id for e in enrollments]
 
-        results = StudentResult.objects.filter(student=student)
+        # Results / performance trend (last 8 scores)
+        results = StudentResult.objects.filter(student=student).order_by("-id")
         scores = [r.test + r.exam for r in results]
         avg_score = round(sum(scores) / len(scores), 1) if scores else None
+        performance_trend = scores[:8][::-1]  # oldest→newest for chart
 
-        from django.utils import timezone as tz
-        notifications = request.user.notification_set.order_by("-created_at")[:5]
+        # Rank from latest leaderboard snapshot
+        rank = None
+        tier = ""
+        snapshot = (
+            LeaderboardSnapshot.objects
+            .filter(student=student)
+            .select_related("season")
+            .order_by("-season__start_date", "-id")
+            .first()
+        )
+        if snapshot:
+            rank = snapshot.rank
+            tier = snapshot.badge
+
+        # Notifications
+        unread_count = Notification.objects.filter(
+            recipient=user, is_read=False
+        ).count()
+        notifications = Notification.objects.filter(recipient=user).order_by("-created_at")[:5]
         notices = [
             {"title": n.get_category_display(), "message": n.message}
             for n in notifications
         ]
 
-        enrolled_group_ids = [e.group_id for e in enrollments]
+        # Pending assignments (due in future, not yet submitted)
         now = tz.now()
+        submitted_ids = set(
+            Submission.objects.filter(student=student)
+            .values_list("assignment_id", flat=True)
+        )
+        pending_qs = Assignment.objects.filter(
+            group_id__in=enrolled_group_ids,
+            due_date__gte=now,
+        ).exclude(id__in=submitted_ids)
+        pending_count = pending_qs.count()
+
+        # Upcoming assignments preview (next 3)
+        upcoming = pending_qs.order_by("due_date")[:3]
+        assignments_preview = [
+            {
+                "id": a.id,
+                "title": a.title,
+                "due_date": a.due_date.isoformat() if a.due_date else None,
+            }
+            for a in upcoming
+        ]
+
+        # New vocab words added in the last 7 days
+        week_ago = now - datetime.timedelta(days=7)
+        new_vocab = VocabularyDay.objects.filter(
+            group_id__in=enrolled_group_ids,
+            created_at__gte=week_ago,
+        ).count()
+
+        # Stories visible to this student
         stories_qs = DashboardStory.objects.filter(
             is_active=True
         ).filter(
@@ -213,12 +272,20 @@ class StudentDashboardView(APIView):
                 })
 
         payload = {
+            "rank": rank,
+            "tier": tier,
+            "streak_days": 0,  # streak tracking not yet implemented
             "attendance_percentage": att_pct,
             "total_subjects": total_subjects,
             "average_score": avg_score,
             "enrolled_groups": enrolled_count,
+            "pending_assignments": pending_count,
+            "unread_notifications": unread_count,
+            "new_vocab_words": new_vocab,
+            "performance_trend": performance_trend,
             "notices": notices,
             "stories": stories_out,
+            "assignments_preview": assignments_preview,
         }
         cache.set(cache_key, payload, settings.DASHBOARD_CACHE_TTL)
         return Response(payload)

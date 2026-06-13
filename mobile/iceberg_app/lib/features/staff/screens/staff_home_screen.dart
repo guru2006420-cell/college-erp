@@ -1,12 +1,19 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/api/api_providers.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/formatters.dart';
+
+// ── Design tokens ────────────────────────────────────────────────────────────
+const _bg     = Color(0xFF081A20);
+const _surf   = Color(0xFF0F2530);
+const _card   = Color(0xFF132D38);
+const _stroke = Color(0xFF1E3D4A);
+const _lime   = Color(0xFFDFFF2F);
+const _amber  = Color(0xFFFFB020);
+const _green  = Color(0xFF4CAF50);
+const _white  = Colors.white;
+const _muted  = Color(0xFF7A9BAA);
 
 class StaffHomeScreen extends ConsumerWidget {
   const StaffHomeScreen({super.key});
@@ -18,10 +25,16 @@ class StaffHomeScreen extends ConsumerWidget {
     final groups = ref.watch(staffGroupsProvider);
 
     final hour     = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final firstName = user?.firstName.isNotEmpty == true ? user!.firstName : 'Teacher';
+    final initials = (() {
+      final full = '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
+      if (full.isEmpty) return 'T';
+      return full.split(' ').where((p) => p.isNotEmpty).take(2).map((p) => p[0]).join().toUpperCase();
+    })();
 
     return Scaffold(
-      backgroundColor: IceColors.bg,
+      backgroundColor: _bg,
       body: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([
@@ -29,106 +42,192 @@ class StaffHomeScreen extends ConsumerWidget {
             ref.refresh(staffGroupsProvider.future),
           ]);
         },
-        color: IceColors.navyDeep,
+        color: _lime,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
+            // ── User card ──────────────────────────────────────────────────
             SliverToBoxAdapter(
-              child: _buildCleanHeader(context, user, greeting),
-            ),
-
-            stats.when(
-              loading: () => const SliverToBoxAdapter(child: _Skeleton()),
-              error:   (_, __) => const SliverToBoxAdapter(child: SizedBox()),
-              data: (d) => SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: Column(children: [
-                    // 2 columns on phones, 4 across on tablets/desktop.
-                    LayoutBuilder(builder: (context, c) {
-                      final cards = <Widget>[
-                        _StatCard(
-                          value: fmtNum(d['total_students']),
-                          label: 'Students',
-                          icon: Icons.people_rounded,
-                          color: IceColors.navyDeep,
-                          delay: 0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _surf,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _stroke),
+                  ),
+                  child: Row(children: [
+                    // Avatar with lime ring
+                    Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _lime, width: 2.5),
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: _card,
+                        child: Text(initials,
+                            style: const TextStyle(
+                                color: _lime,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('SUPERVISOR',
+                            style: TextStyle(
+                                color: _muted, fontSize: 11, fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2)),
+                        const SizedBox(height: 4),
+                        RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            children: [
+                              TextSpan(text: '$greeting, ', style: const TextStyle(color: _white)),
+                              TextSpan(text: firstName, style: const TextStyle(color: _lime)),
+                            ],
+                          ),
                         ),
-                        _StatCard(
-                          value: fmtNum(d['total_groups']),
-                          label: 'My Groups',
-                          icon: Icons.group_rounded,
-                          color: IceColors.info,
-                          delay: 80,
-                        ),
-                        _StatCard(
-                          value: fmtNum(d['sessions_today']),
-                          label: 'Sessions Today',
-                          icon: Icons.today_rounded,
-                          color: IceColors.cyan,
-                          delay: 160,
-                        ),
-                        _StatCard(
-                          value: fmtPercent(d['avg_attendance']),
-                          label: 'Avg Attendance',
-                          icon: Icons.bar_chart_rounded,
-                          color: IceColors.success,
-                          delay: 240,
-                        ),
-                      ];
-                      final cols = c.maxWidth >= 600 ? 4 : 2;
-                      final w = (c.maxWidth - (cols - 1) * 10) / cols;
-                      return Wrap(spacing: 10, runSpacing: 10, children: [
-                        for (final card in cards) SizedBox(width: w, child: card),
-                      ]);
-                    }),
-                    const SizedBox(height: 16),
-                    _StaffAttendanceChart(data: d),
+                      ]),
+                    ),
                   ]),
                 ),
               ),
             ),
 
+            // ── Stats 2×2 grid ─────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
-                child: const Text('My Groups',
-                    style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: IceColors.text))
-                    .animate(delay: 400.ms).fadeIn(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: stats.when(
+                  loading: () => const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _lime))),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (d) => Column(children: [
+                    Row(children: [
+                      Expanded(child: _StatCard(
+                        badge: 'Total', badgeColor: _muted,
+                        value: '${d['total_students'] ?? 0}',
+                        valueColor: _white,
+                        label: 'Total Students',
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _StatCard(
+                        badge: 'Today', badgeColor: _lime,
+                        value: '${d['sessions_today'] ?? 0}',
+                        valueColor: _lime,
+                        label: 'Attendance Taken',
+                      )),
+                    ]),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      Expanded(child: _StatCard(
+                        badge: 'Action', badgeColor: _amber,
+                        value: '${d['pending_results'] ?? 0} groups',
+                        valueColor: _white,
+                        label: 'Pending Results',
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _StatCard(
+                        badge: 'New', badgeColor: _green,
+                        value: '${d['pending_leaves'] ?? 0}',
+                        valueColor: _white,
+                        label: 'Leave Requests',
+                      )),
+                    ]),
+                  ]),
+                ),
+              ),
+            ),
+
+            // ── Quick Actions ──────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Quick Actions',
+                      style: TextStyle(color: _white, fontSize: 17, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 14),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+                    _QuickAction(
+                      icon: Icons.how_to_reg_rounded,
+                      label: 'Take\nAttendance',
+                      onTap: () => context.push('/staff/attendance'),
+                    ),
+                    _QuickAction(
+                      icon: Icons.bar_chart_rounded,
+                      label: 'Add\nResult',
+                      onTap: () => context.push('/staff/results'),
+                    ),
+                    _QuickAction(
+                      icon: Icons.assignment_rounded,
+                      label: 'New\nAssignment',
+                      onTap: () => context.push('/staff/assignments'),
+                    ),
+                    _QuickAction(
+                      icon: Icons.beach_access_rounded,
+                      label: 'Request\nLeave',
+                      onTap: () => context.push('/staff/leave'),
+                    ),
+                  ]),
+                ]),
+              ),
+            ),
+
+            // ── Today's Schedule ───────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                child: Row(children: [
+                  const Expanded(
+                    child: Text("Today's Schedule",
+                        style: TextStyle(color: _white, fontSize: 17, fontWeight: FontWeight.w800)),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push('/staff/classes'),
+                    child: const Text('View Full Calendar',
+                        style: TextStyle(color: _lime, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
               ),
             ),
 
             groups.when(
               loading: () => const SliverToBoxAdapter(
-                  child: Center(child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(
-                          color: IceColors.navyDeep)))),
-              error: (e, _) => SliverToBoxAdapter(
-                  child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text('Error: $e',
-                          style: const TextStyle(color: IceColors.danger)))),
+                child: Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: _lime)))),
+              error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
               data: (list) {
                 if (list.isEmpty) {
                   return const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.all(24),
-                      child: Center(child: Text('No groups assigned.',
-                          style: TextStyle(color: IceColors.muted))),
+                      child: Center(child: Text('No classes scheduled.', style: TextStyle(color: _muted))),
                     ),
                   );
                 }
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) {
-                      if (i == list.length) return const SizedBox(height: 100);
-                      return _GroupCard(group: list[i], index: i);
+                final times = ['08:00 AM', '10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM'];
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  sliver: SliverList.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final g = list[i];
+                      final isNow = i == 0;
+                      final time = times[i % times.length];
+                      return _ScheduleItem(
+                        time: time,
+                        name: g['name']?.toString() ?? 'Group',
+                        subtitle: [
+                          g['course_name']?.toString(),
+                          g['room'] != null ? 'Room ${g['room']}' : null,
+                        ].where((e) => e != null && e.isNotEmpty).join(' · '),
+                        isNow: isNow,
+                        onAttendance: () => context.push('/staff/attendance'),
+                      );
                     },
-                    childCount: list.length + 1,
                   ),
                 );
               },
@@ -138,289 +237,133 @@ class StaffHomeScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Widget _buildCleanHeader(BuildContext context, IceUser? user, String greeting) {
-    final name = user?.firstName.isNotEmpty == true ? user!.firstName : 'Teacher';
-    final full = '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
-    final initials = full.isNotEmpty
-        ? full.split(' ').where((p) => p.isNotEmpty).take(2).map((p) => p[0]).join().toUpperCase()
-        : 'T';
-    final top = MediaQuery.paddingOf(context).top;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: EdgeInsets.fromLTRB(20, top > 16 ? 20 : 20, 20, 24),
-      decoration: BoxDecoration(
-        gradient: kHeroGradient,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(greeting,
-                    style: TextStyle(
-                        color: Colors.white.withAlpha(160),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500))
-                    .animate().fadeIn(duration: 400.ms),
-                const SizedBox(height: 4),
-                Text(name,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900))
-                    .animate(delay: 80.ms)
-                    .slideX(begin: -0.1, duration: 400.ms, curve: Curves.easeOut)
-                    .fadeIn(duration: 300.ms),
-              ]),
-            ),
-            Container(
-              width: 46, height: 46,
-              decoration: const BoxDecoration(
-                color: IceColors.lime,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(initials,
-                  style: const TextStyle(
-                      color: IceColors.navy,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900)),
-            ).animate(delay: 200.ms).scale(duration: 400.ms, curve: Curves.elasticOut),
-          ]),
-          const SizedBox(height: 16),
-          Row(children: [
-            _QuickChip(icon: Icons.group_rounded, label: 'My Groups'),
-            const SizedBox(width: 8),
-            _QuickChip(icon: Icons.bar_chart_rounded, label: 'Attendance'),
-            const SizedBox(width: 8),
-            _QuickChip(icon: Icons.grade_rounded, label: 'Results'),
-          ]).animate(delay: 280.ms).slideY(begin: 0.15, duration: 350.ms).fadeIn(duration: 300.ms),
-        ],
-      ),
-    );
-  }
 }
 
-class _QuickChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _QuickChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(25),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withAlpha(50), width: 1),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: Colors.white, size: 14),
-        const SizedBox(width: 5),
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-      ]),
-    );
-  }
-}
-
-
+// ── Stat card ─────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData icon;
-  final Color color;
-  final int delay;
+  final String badge, value, label;
+  final Color badgeColor, valueColor;
   const _StatCard({
-    required this.value, required this.label,
-    required this.icon,  required this.color, required this.delay,
+    required this.badge, required this.badgeColor,
+    required this.value, required this.valueColor,
+    required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: color.withAlpha(20), blurRadius: 12, offset: const Offset(0, 4)),
-        ],
+        color: _card, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _stroke),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(
-            color: color.withAlpha(20),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 18),
+        Align(
+          alignment: Alignment.topRight,
+          child: Text(badge, style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.w700)),
         ),
-        const SizedBox(height: 12),
-        Text(value,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w500, color: IceColors.muted)),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(color: valueColor, fontSize: 22, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w500)),
       ]),
-    )
-        .animate(delay: Duration(milliseconds: 400 + delay))
-        .slideY(begin: 0.2, duration: 400.ms, curve: Curves.easeOut)
-        .fadeIn(duration: 350.ms);
+    );
   }
 }
 
-class _GroupCard extends StatelessWidget {
-  final dynamic group;
-  final int index;
-  const _GroupCard({required this.group, required this.index});
+// ── Quick action button ───────────────────────────────────────────────────────
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _QuickAction({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(children: [
+        Container(
+          width: 52, height: 52,
+          decoration: BoxDecoration(
+            color: _card, shape: BoxShape.circle,
+            border: Border.all(color: _stroke),
+          ),
+          child: Icon(icon, color: _white, size: 22),
+        ),
+        const SizedBox(height: 6),
+        Text(label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+// ── Schedule row ──────────────────────────────────────────────────────────────
+class _ScheduleItem extends StatelessWidget {
+  final String time, name, subtitle;
+  final bool isNow;
+  final VoidCallback onAttendance;
+  const _ScheduleItem({
+    required this.time, required this.name, required this.subtitle,
+    required this.isNow, required this.onAttendance,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: IceColors.border),
-      ),
-      child: Row(children: [
-        Container(
-          width: 42, height: 42,
-          decoration: BoxDecoration(
-            color: IceColors.navyDeep.withAlpha(20),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.group_rounded, size: 20, color: IceColors.navyDeep),
+        color: _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border(
+          left: BorderSide(color: isNow ? _lime : Colors.transparent, width: 3),
+          top: BorderSide(color: _stroke),
+          right: BorderSide(color: _stroke),
+          bottom: BorderSide(color: _stroke),
         ),
-        const SizedBox(width: 12),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(children: [
+        SizedBox(
+          width: 72,
+          child: Text(time, style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(group['name']?.toString() ?? '—',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-            if (group['subject'] != null || group['course'] != null)
-              Text(
-                (group['subject'] ?? group['course'])?.toString() ?? '',
-                style: const TextStyle(fontSize: 12, color: IceColors.muted),
+            Row(children: [
+              Expanded(
+                child: Text(name, style: const TextStyle(color: _white, fontWeight: FontWeight.w700, fontSize: 14)),
               ),
+              if (isNow)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(20), border: Border.all(color: _lime)),
+                  child: const Text('NOW', style: TextStyle(color: _lime, fontSize: 9, fontWeight: FontWeight.w800)),
+                ),
+            ]),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(subtitle, style: const TextStyle(color: _muted, fontSize: 11)),
+            ],
           ]),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: IceColors.navyDeep.withAlpha(15),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            '${group['student_count'] ?? '—'}',
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700, color: IceColors.navyDeep),
-          ),
-        ),
-      ]),
-    )
-        .animate(delay: Duration(milliseconds: 500 + index * 80))
-        .slideX(begin: 0.1, duration: 350.ms, curve: Curves.easeOut)
-        .fadeIn(duration: 300.ms);
-  }
-}
-
-class _Skeleton extends StatelessWidget {
-  const _Skeleton();
-  @override
-  Widget build(BuildContext context) => Shimmer.fromColors(
-        baseColor: Colors.grey[200]!,
-        highlightColor: Colors.grey[50]!,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            const SizedBox(height: 20),
-            Row(children: [
-              Expanded(child: _box(90)),
-              const SizedBox(width: 10),
-              Expanded(child: _box(90)),
-            ]),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: _box(90)),
-              const SizedBox(width: 10),
-              Expanded(child: _box(90)),
-            ]),
-          ]),
-        ),
-      );
-
-  Widget _box(double h) => Container(
-        height: h,
-        decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      );
-}
-
-
-class _StaffAttendanceChart extends StatelessWidget {
-  final Map data;
-  const _StaffAttendanceChart({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final spark = (data['attendance_spark'] as List?)?.cast<num>() ?? [];
-    if (spark.isEmpty) return const SizedBox.shrink();
-
-    final spots = spark.asMap().entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
-        .toList();
-    final maxY = spark.map((v) => v.toDouble()).reduce((a, b) => a > b ? a : b) + 10;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: IceColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Attendance Trend',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: IceColors.text)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 100,
-            child: BarChart(
-              BarChartData(
-                maxY: maxY.clamp(0, 110),
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                barGroups: spots.map((s) => BarChartGroupData(
-                  x: s.x.toInt(),
-                  barRods: [
-                    BarChartRodData(
-                      toY: s.y,
-                      width: 18,
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(6)),
-                      color: IceColors.navyDeep.withAlpha(
-                          s.y > 70 ? 220 : s.y > 50 ? 150 : 80),
-                    ),
-                  ],
-                )).toList(),
-              ),
+        if (isNow) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onAttendance,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: _surf, borderRadius: BorderRadius.circular(20), border: Border.all(color: _stroke)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                Icon(Icons.how_to_reg_rounded, color: _white, size: 13),
+                SizedBox(width: 4),
+                Text('Attendance', style: TextStyle(color: _white, fontSize: 10, fontWeight: FontWeight.w600)),
+              ]),
             ),
           ),
         ],
-      ),
-    ).animate(delay: 350.ms).fadeIn(duration: 400.ms);
+      ]),
+    );
   }
 }

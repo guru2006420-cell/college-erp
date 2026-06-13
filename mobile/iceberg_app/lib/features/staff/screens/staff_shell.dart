@@ -78,11 +78,11 @@ class _StaffBottomNav extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
     const items = [
-      (Icons.grid_view_rounded, 'Home'),
-      (Icons.class_rounded, 'Classes'),
+      (Icons.grid_view_rounded, 'Dashboard'),
       (Icons.event_available_rounded, 'Attendance'),
+      (Icons.bar_chart_rounded, 'Results'),
       (Icons.assignment_outlined, 'Assignments'),
-      (Icons.more_horiz_rounded, 'More'),
+      (Icons.person_rounded, 'Profile'),
     ];
 
     return Container(
