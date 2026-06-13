@@ -237,6 +237,8 @@ ThemeData buildIceTheme({required bool dark, required Color accent}) {
       fontFamily: 'Inter',
       bodyColor: t.textHi,
       displayColor: t.textHi,
+      decoration: TextDecoration.none,
+      decorationColor: Colors.transparent,
     ),
     splashFactory: InkSparkle.splashFactory,
     pageTransitionsTheme: icePageTransitionsTheme,

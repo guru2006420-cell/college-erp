@@ -142,7 +142,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
       GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
       GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
-      GoRoute(path: '/staff/settings',      builder: (_, __) => const ProfileHubScreen()),
+      GoRoute(path: '/staff/settings',      builder: (_, __) => const StudentSettingsScreen()),
       GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
 
       // ── Student shell (5 bottom-nav branches) ────────────────────────────

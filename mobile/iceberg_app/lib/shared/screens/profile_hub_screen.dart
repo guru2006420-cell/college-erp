@@ -180,10 +180,10 @@ class ProfileHubScreen extends ConsumerWidget {
         Row(children: [
           Expanded(
             child: _QuickCard(
-              icon: Icons.lock_outline_rounded,
-              title: 'Security',
-              subtitle: 'Change password',
-              onTap: () => _showPasswordSheet(context),
+              icon: Icons.settings_outlined,
+              title: 'Settings',
+              subtitle: 'Theme, language & more',
+              onTap: () => context.push('/staff/settings'),
             ),
           ),
           const SizedBox(width: 12),
@@ -235,7 +235,7 @@ class ProfileHubScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
 
-        // ── Appearance ──────────────────────────────────────────────────────
+        // ── Appearance shortcut ─────────────────────────────────────────────
         const SectionHeader('Appearance'),
         IceCard(
           padding: const EdgeInsets.all(8),
@@ -265,6 +265,14 @@ class ProfileHubScreen extends ConsumerWidget {
                   .setTheme(ThemeMode.dark),
             ),
           ]),
+        ),
+        const SizedBox(height: 8),
+        ActionTile(
+          icon: Icons.tune_rounded,
+          iconColor: t.accent,
+          title: 'Language, Accent & More',
+          subtitle: 'Full appearance settings',
+          onTap: () => context.push('/staff/settings'),
         ),
         const SizedBox(height: 16),
 
@@ -304,15 +312,6 @@ class ProfileHubScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _EditProfileSheet(user: user),
-    );
-  }
-
-  void _showPasswordSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const _ChangePasswordSheet(),
     );
   }
 
