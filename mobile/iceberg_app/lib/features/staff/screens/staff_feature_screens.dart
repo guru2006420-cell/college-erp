@@ -385,37 +385,41 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
 
   int? _groupId;
   DateTime _date = DateTime.now();
-  final Map<int, String> _status = {}; // studentId -> ‘P’/’L’/’A’
+  final Map<int, String> _status = {}; // studentId -> 'P'/'L'/'A'
   bool _saving = false;
 
   Future<void> _save(List students) async {
     if (_groupId == null) return;
     setState(() => _saving = true);
     final records = [
-      for (final s in students) {
-        final st = _status[s[‘id’] as int] ?? ‘P’;
-        {‘student_id’: s[‘id’], ‘status’: st == ‘P’ ? 1 : st == ‘L’ ? 2 : 0}
-      }
+      for (final s in students)
+        {
+          'student_id': s['id'],
+          'status': () {
+            final st = _status[s['id'] as int] ?? 'P';
+            return st == 'P' ? 1 : st == 'L' ? 2 : 0;
+          }(),
+        },
     ];
     try {
-      await ApiClient.instance.dio.post(‘/attendance/’, data: {
-        ‘group_id’: _groupId,
-        ‘date’: DateFormat(‘yyyy-MM-dd’).format(_date),
-        ‘records’: records,
+      await ApiClient.instance.dio.post('/attendance/', data: {
+        'group_id': _groupId,
+        'date': DateFormat('yyyy-MM-dd').format(_date),
+        'records': records,
       });
-      if (mounted) _toast(context, ‘Attendance saved.’);
+      if (mounted) _toast(context, 'Attendance saved.');
     } on DioException catch (e) {
       if (mounted) {
-        _toast(context, e.response?.data?[‘detail’]?.toString() ?? ‘Could not save.’);
+        _toast(context, e.response?.data?['detail']?.toString() ?? 'Could not save.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  int get _presentCount => _status.values.where((v) => v == ‘P’).length;
-  int get _lateCount    => _status.values.where((v) => v == ‘L’).length;
-  int get _absentCount  => _status.values.where((v) => v == ‘A’).length;
+  int get _presentCount => _status.values.where((v) => v == 'P').length;
+  int get _lateCount    => _status.values.where((v) => v == 'L').length;
+  int get _absentCount  => _status.values.where((v) => v == 'A').length;
 
   @override
   Widget build(BuildContext context) {
@@ -427,10 +431,10 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text(‘Take Attendance’,
+              const Text('Take Attendance',
                   style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              const Text(‘Record student presence for today\’s session.’,
+              const Text('Record student presence for today\'s session.',
                   style: TextStyle(color: _muted, fontSize: 13)),
               const SizedBox(height: 16),
               // Group + Date row
@@ -444,22 +448,22 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
           const SizedBox(height: 12),
           // Student list
           Expanded(child: _groupId == null
-            ? Center(child: Text(‘Select a group to begin.’, style: TextStyle(color: _muted)))
+            ? Center(child: Text('Select a group to begin.', style: TextStyle(color: _muted)))
             : Consumer(builder: (context, ref, _) {
                 final detail = ref.watch(groupDetailProvider(_groupId!));
                 return detail.when(
                   loading: () => const Center(child: CircularProgressIndicator(color: _lime)),
-                  error: (e, _) => Center(child: Text(‘$e’, style: const TextStyle(color: Colors.red))),
+                  error: (e, _) => Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
                   data: (d) {
-                    final students = (d[‘enrolled_students’] as List?) ?? [];
-                    if (students.isEmpty) return Center(child: Text(‘No students enrolled.’, style: TextStyle(color: _muted)));
+                    final students = (d['enrolled_students'] as List?) ?? [];
+                    if (students.isEmpty) return Center(child: Text('No students enrolled.', style: TextStyle(color: _muted)));
                     return ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                       itemCount: students.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) {
                         final s = students[i] as Map<String, dynamic>;
-                        final id = s[‘id’] as int;
+                        final id = s['id'] as int;
                         final initials = _studentName(s).characters.first.toUpperCase();
                         return Container(
                           decoration: BoxDecoration(
@@ -473,11 +477,11 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                             const SizedBox(width: 12),
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(_studentName(s), style: const TextStyle(color: _white, fontWeight: FontWeight.w600, fontSize: 14)),
-                              if (s[‘student_id’] != null)
-                                Text(‘${s[‘student_id’]}’, style: const TextStyle(color: _muted, fontSize: 11)),
+                              if (s['student_id'] != null)
+                                Text('${s['student_id']}', style: const TextStyle(color: _muted, fontSize: 11)),
                             ])),
                             _DarkStatusToggle(
-                              value: _status[id] ?? ‘P’,
+                              value: _status[id] ?? 'P',
                               onChanged: (v) => setState(() => _status[id] = v),
                             ),
                           ]),
@@ -492,16 +496,16 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
           if (_groupId != null)
             Consumer(builder: (context, ref, _) {
               final detail = ref.watch(groupDetailProvider(_groupId!));
-              final students = detail.maybeWhen(data: (d) => (d[‘enrolled_students’] as List?) ?? [], orElse: () => const []);
+              final students = detail.maybeWhen(data: (d) => (d['enrolled_students'] as List?) ?? [], orElse: () => const []);
               if (students.isEmpty) return const SizedBox.shrink();
               return Container(
                 color: _surf,
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 child: Column(children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                    _SummaryChip(‘Present’, _presentCount, Colors.green),
-                    _SummaryChip(‘Late’, _lateCount, const Color(0xFFFFB020)),
-                    _SummaryChip(‘Absent’, _absentCount, Colors.red),
+                    _SummaryChip('Present', _presentCount, Colors.green),
+                    _SummaryChip('Late', _lateCount, const Color(0xFFFFB020)),
+                    _SummaryChip('Absent', _absentCount, Colors.red),
                   ]),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -517,7 +521,7 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                       icon: _saving
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF081A20)))
                           : const Icon(Icons.check_rounded),
-                      label: const Text(‘Submit Attendance’, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                      label: const Text('Submit Attendance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                     ),
                   ),
                 ]),
@@ -545,23 +549,23 @@ class _DarkGroupDropdown extends ConsumerWidget {
     final groups = ref.watch(staffGroupsProvider);
     return groups.when(
       loading: () => const LinearProgressIndicator(color: _lime),
-      error: (e, _) => Text(‘$e’, style: const TextStyle(color: Colors.red)),
+      error: (e, _) => Text('$e', style: const TextStyle(color: Colors.red)),
       data: (list) {
-        if (list.isEmpty) return const Text(‘No groups’, style: TextStyle(color: _muted));
+        if (list.isEmpty) return const Text('No groups', style: TextStyle(color: _muted));
         return DropdownButtonFormField<int>(
           value: value,
           isExpanded: true,
           dropdownColor: _card,
           style: const TextStyle(color: _white, fontSize: 13),
           decoration: InputDecoration(
-            labelText: ‘Group’,
+            labelText: 'Group',
             labelStyle: const TextStyle(color: _muted),
             filled: true,
             fillColor: _card,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
           ),
-          items: [for (final g in list) DropdownMenuItem(value: g[‘id’] as int, child: Text(‘${g[‘name’]}’, overflow: TextOverflow.ellipsis))],
+          items: [for (final g in list) DropdownMenuItem(value: g['id'] as int, child: Text('${g['name']}', overflow: TextOverflow.ellipsis))],
           onChanged: onChanged,
         );
       },
@@ -602,7 +606,7 @@ class _DarkDatePicker extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.calendar_today_rounded, color: _muted, size: 16),
           const SizedBox(width: 8),
-          Text(DateFormat(‘MMM d, yyyy’).format(date), style: const TextStyle(color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(DateFormat('MMM d, yyyy').format(date), style: const TextStyle(color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
@@ -621,7 +625,7 @@ class _DarkStatusToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      for (final opt in [‘P’, ‘L’, ‘A’])
+      for (final opt in ['P', 'L', 'A'])
         Padding(
           padding: const EdgeInsets.only(left: 6),
           child: GestureDetector(
@@ -654,7 +658,7 @@ class _SummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      Text(‘$count’, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+      Text('$count', style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
       Text(label, style: const TextStyle(color: Color(0xFF7A9BAA), fontSize: 11)),
     ]);
   }
