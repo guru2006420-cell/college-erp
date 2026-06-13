@@ -1,120 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_providers.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/settings/app_settings.dart';
+import '../../../core/theme/ice_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/ice_kit.dart';
+import '../../../shared/widgets/ice_shell.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Shared building blocks (match the existing staff portal visual language)
+//  Shared helpers
 // ════════════════════════════════════════════════════════════════════════════
-
-class _Header extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  // Secondary screens (reached from the More menu / header bell) show a back
-  // control; bottom-nav tab screens do not.
-  final bool showBack;
-  const _Header({required this.title, required this.subtitle, this.showBack = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    final canPop = showBack;
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, top + 18, 20, 26),
-      decoration: const BoxDecoration(
-        gradient: kHeroGradient,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (canPop)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: GestureDetector(
-              onTap: () {
-                final nav = Navigator.of(context);
-                if (nav.canPop()) {
-                  nav.maybePop();
-                } else {
-                  context.go('/staff/home');
-                }
-              },
-              child: const Row(children: [
-                Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
-                SizedBox(width: 6),
-                Text('Back',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
-              ]),
-            ),
-          ),
-        Text(title,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 4),
-        Text(subtitle,
-            style: TextStyle(color: Colors.white.withAlpha(165), fontSize: 13)),
-      ]),
-    );
-  }
-}
-
-Widget _empty(String msg, IconData icon) => SliverFillRemaining(
-      hasScrollBody: false,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 80),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 56, color: IceColors.muted),
-          const SizedBox(height: 12),
-          Text(msg,
-              style: const TextStyle(
-                  color: IceColors.muted,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600)),
-        ]),
-      ),
-    );
-
-Widget _loading() => const Padding(
-      padding: EdgeInsets.only(top: 80),
-      child: Center(child: CircularProgressIndicator(color: IceColors.navyDeep)),
-    );
-
-Widget _error(Object e) => Padding(
-      padding: const EdgeInsets.all(28),
-      child: Center(
-        child: Text('Could not load.\n$e',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: IceColors.danger)),
-      ),
-    );
-
-InputDecoration _dec(String label, {String? hint}) => InputDecoration(
-      labelText: label,
-      hintText: hint,
-      filled: true,
-      fillColor: IceColors.surface2,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: IceColors.border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: IceColors.border),
-      ),
-    );
 
 void _toast(BuildContext context, String msg) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
 
-/// Resolve a friendly student name from a StudentSummary map.
 String _studentName(Map s) {
   final f = (s['first_name'] ?? '').toString().trim();
   final l = (s['last_name'] ?? '').toString().trim();
@@ -122,7 +26,7 @@ String _studentName(Map s) {
   return full.isEmpty ? (s['email']?.toString() ?? 'Student') : full;
 }
 
-/// A reusable group picker fed by the teacher's own groups.
+// ── Themed group dropdown ─────────────────────────────────────────────────────
 class _GroupDropdown extends ConsumerWidget {
   final int? value;
   final ValueChanged<int?> onChanged;
@@ -130,20 +34,30 @@ class _GroupDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
     final groups = ref.watch(staffGroupsProvider);
     return groups.when(
-      loading: () => const LinearProgressIndicator(color: IceColors.navyDeep),
-      error: (e, _) => Text('Could not load groups: $e',
-          style: const TextStyle(color: IceColors.danger)),
+      loading: () => LinearProgressIndicator(color: t.accent),
+      error: (e, _) => Text(
+        'Could not load groups: $e',
+        style: TextStyle(color: t.coral),
+      ),
       data: (list) {
         if (list.isEmpty) {
-          return const Text('No groups are assigned to you yet.',
-              style: TextStyle(color: IceColors.muted));
+          return Text(
+            'No groups are assigned to you yet.',
+            style: TextStyle(color: t.textMid),
+          );
         }
         return DropdownButtonFormField<int>(
           value: value,
           isExpanded: true,
-          decoration: _dec('Group'),
+          dropdownColor: t.card,
+          style: TextStyle(color: t.textHi, fontSize: 14),
+          decoration: InputDecoration(
+            labelText: 'Group',
+            labelStyle: TextStyle(color: t.textMid),
+          ),
           items: [
             for (final g in list)
               DropdownMenuItem(
@@ -171,37 +85,35 @@ class StaffClassesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groups = ref.watch(staffGroupsProvider);
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: RefreshIndicator(
-        color: IceColors.navyDeep,
+
+    return groups.when(
+      loading: () => const PageSkeleton(),
+      error: (e, _) => ErrorState(
+        error: e,
+        onRetry: () => ref.invalidate(staffGroupsProvider),
+      ),
+      data: (list) => IcePage(
+        title: 'My Classes',
+        subtitle: 'Groups you teach',
+        backButton: true,
         onRefresh: () => ref.refresh(staffGroupsProvider.future),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            const SliverToBoxAdapter(
-              child: _Header(title: 'My Classes', subtitle: 'Groups you teach'),
+        children: [
+          if (list.isEmpty)
+            IceCard(
+              child: EmptyState(
+                icon: Icons.class_outlined,
+                title: 'No groups assigned',
+                message: 'Your groups will appear here once assigned.',
+              ),
+            )
+          else
+            ...list.map(
+              (g) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _ClassCard(group: g as Map<String, dynamic>),
+              ),
             ),
-            groups.when(
-              loading: () => SliverToBoxAdapter(child: _loading()),
-              error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-              data: (list) {
-                if (list.isEmpty) {
-                  return _empty('No groups assigned', Icons.class_outlined);
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  sliver: SliverList.separated(
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) =>
-                        _ClassCard(group: list[i] as Map<String, dynamic>),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -213,54 +125,61 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
+    final t = context.ice;
+    return IceCard(
+      padding: const EdgeInsets.all(16),
       onTap: () => showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: t.card,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
         builder: (_) => _RosterSheet(
           groupId: group['id'] as int,
           groupName: (group['name'] ?? 'Group').toString(),
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: IceColors.border),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(children: [
+      child: Row(
+        children: [
           Container(
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-                color: IceColors.navyDeep.withAlpha(20),
-                borderRadius: BorderRadius.circular(13)),
-            child: const Icon(Icons.group_rounded, color: IceColors.navyDeep),
+              color: t.accentSoft,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(Icons.group_rounded, color: t.accentInk),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(group['name']?.toString() ?? 'Group',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 15)),
-              const SizedBox(height: 2),
-              Text(
-                [
-                  group['course_name'],
-                  group['schedule'],
-                  group['room'] != null ? 'Room ${group['room']}' : null,
-                ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-                style: const TextStyle(fontSize: 12.5, color: IceColors.muted),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group['name']?.toString() ?? 'Group',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: t.textHi,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    group['course_name'],
+                    group['schedule'],
+                    group['room'] != null ? 'Room ${group['room']}' : null,
+                  ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
+                  style: TextStyle(fontSize: 12.5, color: t.textMid),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: IceColors.muted),
-        ]),
+          Icon(Icons.chevron_right_rounded, color: t.textLow),
+        ],
       ),
     );
   }
@@ -273,47 +192,55 @@ class _RosterSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
     final detail = ref.watch(groupDetailProvider(groupId));
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.6,
       maxChildSize: 0.9,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: IceColors.bg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(children: [
+      builder: (_, controller) => Column(
+        children: [
           const SizedBox(height: 10),
           Container(
             width: 42,
             height: 4,
             decoration: BoxDecoration(
-                color: IceColors.border,
-                borderRadius: BorderRadius.circular(99)),
+              color: t.stroke,
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-            child: Row(children: [
-              const Icon(Icons.people_alt_rounded, color: IceColors.navyDeep),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('$groupName · Students',
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w800)),
-              ),
-            ]),
+            child: Row(
+              children: [
+                Icon(Icons.people_alt_rounded, color: t.accentInk),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$groupName · Students',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: t.textHi,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
             child: detail.when(
-              loading: () => _loading(),
-              error: (e, _) => _error(e),
+              loading: () => const PageSkeleton(),
+              error: (e, _) => ErrorState(
+                error: e,
+                onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+              ),
               data: (d) {
                 final students = (d['enrolled_students'] as List?) ?? [];
                 if (students.isEmpty) {
-                  return const Center(
-                    child: Text('No students enrolled yet.',
-                        style: TextStyle(color: IceColors.muted)),
+                  return EmptyState(
+                    icon: Icons.person_off_outlined,
+                    title: 'No students enrolled yet',
                   );
                 }
                 return ListView.separated(
@@ -323,41 +250,46 @@ class _RosterSheet extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final s = students[i] as Map<String, dynamic>;
-                    return Container(
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: IceColors.border)),
+                    final name = _studentName(s);
+                    return IceCard(
                       padding: const EdgeInsets.all(12),
-                      child: Row(children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: IceColors.navyDeep.withAlpha(20),
-                          child: Text(
-                            _studentName(s).characters.first.toUpperCase(),
-                            style: const TextStyle(
-                                color: IceColors.navyDeep,
-                                fontWeight: FontWeight.w800),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: t.accentSoft,
+                            child: Text(
+                              name.characters.first.toUpperCase(),
+                              style: TextStyle(
+                                color: t.accentInk,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(_studentName(s),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                        if ((s['status']?.toString() ?? '') != 'active')
-                          Text(s['status']?.toString() ?? '',
-                              style: const TextStyle(
-                                  fontSize: 11, color: IceColors.warning)),
-                      ]),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: t.textHi,
+                              ),
+                            ),
+                          ),
+                          if ((s['status']?.toString() ?? '') != 'active')
+                            StatusBadge(
+                              s['status']?.toString() ?? '',
+                              tone: BadgeTone.amber,
+                            ),
+                        ],
+                      ),
                     );
                   },
                 );
               },
             ),
           ),
-        ]),
+        ],
       ),
     );
   }
@@ -369,20 +301,14 @@ class _RosterSheet extends ConsumerWidget {
 
 class StaffAttendanceScreen extends ConsumerStatefulWidget {
   const StaffAttendanceScreen({super.key});
+
   @override
   ConsumerState<StaffAttendanceScreen> createState() =>
       _StaffAttendanceScreenState();
 }
 
-class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
-  static const _bg     = Color(0xFF081A20);
-  static const _surf   = Color(0xFF0F2530);
-  static const _card   = Color(0xFF132D38);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _lime   = Color(0xFFDFFF2F);
-  static const _white  = Colors.white;
-  static const _muted  = Color(0xFF7A9BAA);
-
+class _StaffAttendanceScreenState
+    extends ConsumerState<StaffAttendanceScreen> {
   int? _groupId;
   DateTime _date = DateTime.now();
   final Map<int, String> _status = {}; // studentId -> 'P'/'L'/'A'
@@ -410,7 +336,10 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
       if (mounted) _toast(context, 'Attendance saved.');
     } on DioException catch (e) {
       if (mounted) {
-        _toast(context, e.response?.data?['detail']?.toString() ?? 'Could not save.');
+        _toast(
+          context,
+          e.response?.data?['detail']?.toString() ?? 'Could not save.',
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -418,173 +347,189 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
   }
 
   int get _presentCount => _status.values.where((v) => v == 'P').length;
-  int get _lateCount    => _status.values.where((v) => v == 'L').length;
-  int get _absentCount  => _status.values.where((v) => v == 'A').length;
+  int get _lateCount => _status.values.where((v) => v == 'L').length;
+  int get _absentCount => _status.values.where((v) => v == 'A').length;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Take Attendance',
-                  style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              const Text('Record student presence for today\'s session.',
-                  style: TextStyle(color: _muted, fontSize: 13)),
-              const SizedBox(height: 16),
-              // Group + Date row
-              Row(children: [
-                Expanded(child: _DarkGroupDropdown(value: _groupId, onChanged: (v) => setState(() { _groupId = v; _status.clear(); }))),
-                const SizedBox(width: 10),
-                Expanded(child: _DarkDatePicker(date: _date, onPick: (d) => setState(() => _date = d))),
-              ]),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          // Student list
-          Expanded(child: _groupId == null
-            ? Center(child: Text('Select a group to begin.', style: TextStyle(color: _muted)))
-            : Consumer(builder: (context, ref, _) {
-                final detail = ref.watch(groupDetailProvider(_groupId!));
-                return detail.when(
-                  loading: () => const Center(child: CircularProgressIndicator(color: _lime)),
-                  error: (e, _) => Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
-                  data: (d) {
-                    final students = (d['enrolled_students'] as List?) ?? [];
-                    if (students.isEmpty) return Center(child: Text('No students enrolled.', style: TextStyle(color: _muted)));
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                      itemCount: students.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) {
-                        final s = students[i] as Map<String, dynamic>;
-                        final id = s['id'] as int;
-                        final initials = _studentName(s).characters.first.toUpperCase();
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: _card, borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _stroke),
-                          ),
-                          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-                          child: Row(children: [
-                            CircleAvatar(radius: 18, backgroundColor: _surf,
-                              child: Text(initials, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700))),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(_studentName(s), style: const TextStyle(color: _white, fontWeight: FontWeight.w600, fontSize: 14)),
-                              if (s['student_id'] != null)
-                                Text('${s['student_id']}', style: const TextStyle(color: _muted, fontSize: 11)),
-                            ])),
-                            _DarkStatusToggle(
-                              value: _status[id] ?? 'P',
-                              onChanged: (v) => setState(() => _status[id] = v),
-                            ),
-                          ]),
-                        );
-                      },
-                    );
-                  },
-                );
-              }),
-          ),
-          // Bottom summary + submit
-          if (_groupId != null)
-            Consumer(builder: (context, ref, _) {
-              final detail = ref.watch(groupDetailProvider(_groupId!));
-              final students = detail.maybeWhen(data: (d) => (d['enrolled_students'] as List?) ?? [], orElse: () => const []);
-              if (students.isEmpty) return const SizedBox.shrink();
-              return Container(
-                color: _surf,
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: Column(children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                    _SummaryChip('Present', _presentCount, Colors.green),
-                    _SummaryChip('Late', _lateCount, const Color(0xFFFFB020)),
-                    _SummaryChip('Absent', _absentCount, Colors.red),
-                  ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _lime,
-                        foregroundColor: const Color(0xFF081A20),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
+
+    return IcePage(
+      title: s('Take Attendance'),
+      subtitle: s('Record student presence for today\'s session.'),
+      children: [
+        // ── Group + Date selectors ─────────────────────────────────────
+        _GroupDropdown(
+          value: _groupId,
+          onChanged: (v) => setState(() {
+            _groupId = v;
+            _status.clear();
+          }),
+        ),
+        const SizedBox(height: 12),
+        _IceDatePicker(
+          date: _date,
+          onPick: (d) => setState(() => _date = d),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Student list ───────────────────────────────────────────────
+        if (_groupId == null)
+          IceCard(
+            child: EmptyState(
+              icon: Icons.groups_outlined,
+              title: s('Select a group to begin'),
+              message: s('Choose a group above to load students.'),
+            ),
+          )
+        else
+          Consumer(
+            builder: (ctx, innerRef, _) {
+              final detail = innerRef.watch(groupDetailProvider(_groupId!));
+              return detail.when(
+                loading: () => const PageSkeleton(),
+                error: (e, _) => ErrorState(
+                  error: e,
+                  onRetry: () =>
+                      innerRef.invalidate(groupDetailProvider(_groupId!)),
+                ),
+                data: (d) {
+                  final students = (d['enrolled_students'] as List?) ?? [];
+                  if (students.isEmpty) {
+                    return IceCard(
+                      child: EmptyState(
+                        icon: Icons.person_off_outlined,
+                        title: s('No students enrolled'),
                       ),
-                      onPressed: _saving ? null : () => _save(students),
-                      icon: _saving
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF081A20)))
-                          : const Icon(Icons.check_rounded),
-                      label: const Text('Submit Attendance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    ),
-                  ),
-                ]),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      // Summary bar
+                      IceCard(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _SummaryCount(
+                              label: s('Present'),
+                              count: _presentCount,
+                              color: t.accentInk,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 28,
+                              color: t.stroke,
+                            ),
+                            _SummaryCount(
+                              label: s('Late'),
+                              count: _lateCount,
+                              color: t.amber,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 28,
+                              color: t.stroke,
+                            ),
+                            _SummaryCount(
+                              label: s('Absent'),
+                              count: _absentCount,
+                              color: t.coral,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Student rows
+                      ...students.map((st) {
+                        final student = st as Map<String, dynamic>;
+                        final id = student['id'] as int;
+                        final name = _studentName(student);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: IceCard(
+                            padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: t.accentSoft,
+                                  child: Text(
+                                    name.characters.first.toUpperCase(),
+                                    style: TextStyle(
+                                      color: t.accentInk,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          color: t.textHi,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      if (student['student_id'] != null)
+                                        Text(
+                                          '${student['student_id']}',
+                                          style: TextStyle(
+                                            color: t.textLow,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                _StatusToggle(
+                                  value: _status[id] ?? 'P',
+                                  onChanged: (v) =>
+                                      setState(() => _status[id] = v),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 12),
+
+                      // Submit button
+                      IceButton(
+                        s('Submit Attendance'),
+                        busy: _saving,
+                        icon: Icons.check_rounded,
+                        onPressed: () => _save(students),
+                      ),
+                    ],
+                  );
+                },
               );
-            }),
-        ]),
-      ),
-    );
-  }
-}
-
-class _DarkGroupDropdown extends ConsumerWidget {
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  const _DarkGroupDropdown({required this.value, required this.onChanged});
-
-  static const _card   = Color(0xFF132D38);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _lime   = Color(0xFFDFFF2F);
-  static const _muted  = Color(0xFF7A9BAA);
-  static const _white  = Colors.white;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(staffGroupsProvider);
-    return groups.when(
-      loading: () => const LinearProgressIndicator(color: _lime),
-      error: (e, _) => Text('$e', style: const TextStyle(color: Colors.red)),
-      data: (list) {
-        if (list.isEmpty) return const Text('No groups', style: TextStyle(color: _muted));
-        return DropdownButtonFormField<int>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: _card,
-          style: const TextStyle(color: _white, fontSize: 13),
-          decoration: InputDecoration(
-            labelText: 'Group',
-            labelStyle: const TextStyle(color: _muted),
-            filled: true,
-            fillColor: _card,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+            },
           ),
-          items: [for (final g in list) DropdownMenuItem(value: g['id'] as int, child: Text('${g['name']}', overflow: TextOverflow.ellipsis))],
-          onChanged: onChanged,
-        );
-      },
+      ],
     );
   }
 }
 
-class _DarkDatePicker extends StatelessWidget {
+class _IceDatePicker extends StatelessWidget {
   final DateTime date;
   final ValueChanged<DateTime> onPick;
-  const _DarkDatePicker({required this.date, required this.onPick});
-
-  static const _card   = Color(0xFF132D38);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _muted  = Color(0xFF7A9BAA);
-  static const _white  = Colors.white;
+  const _IceDatePicker({required this.date, required this.onPick});
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     return GestureDetector(
       onTap: () async {
         final now = DateTime.now();
@@ -596,72 +541,110 @@ class _DarkDatePicker extends StatelessWidget {
         );
         if (picked != null) onPick(picked);
       },
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: _card, borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _stroke),
+      child: IceCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded, color: t.textMid, size: 18),
+            const SizedBox(width: 12),
+            Text(
+              DateFormat('MMM d, yyyy').format(date),
+              style: TextStyle(
+                color: t.textHi,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.edit_calendar_rounded, color: t.textLow, size: 16),
+          ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(children: [
-          const Icon(Icons.calendar_today_rounded, color: _muted, size: 16),
-          const SizedBox(width: 8),
-          Text(DateFormat('MMM d, yyyy').format(date), style: const TextStyle(color: _white, fontSize: 13, fontWeight: FontWeight.w600)),
-        ]),
       ),
     );
   }
 }
 
-class _DarkStatusToggle extends StatelessWidget {
+class _StatusToggle extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
-  const _DarkStatusToggle({required this.value, required this.onChanged});
-
-  static const _lime   = Color(0xFFDFFF2F);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _bg     = Color(0xFF081A20);
+  const _StatusToggle({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      for (final opt in ['P', 'L', 'A'])
-        Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(opt),
-            child: Container(
-              width: 34, height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: value == opt ? _lime : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(color: value == opt ? _lime : _stroke, width: 1.5),
+    final t = context.ice;
+    Color colorFor(String opt) => switch (opt) {
+          'P' => t.accentInk,
+          'L' => t.amber,
+          _ => t.coral,
+        };
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final opt in ['P', 'L', 'A'])
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: GestureDetector(
+              onTap: () => onChanged(opt),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: value == opt
+                      ? colorFor(opt).withValues(alpha: 0.18)
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: value == opt ? colorFor(opt) : t.stroke,
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  opt,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: value == opt ? colorFor(opt) : t.textLow,
+                  ),
+                ),
               ),
-              child: Text(opt, style: TextStyle(
-                fontWeight: FontWeight.w800, fontSize: 12,
-                color: value == opt ? _bg : _stroke,
-              )),
             ),
           ),
-        ),
-    ]);
+      ],
+    );
   }
 }
 
-class _SummaryChip extends StatelessWidget {
+class _SummaryCount extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
-  const _SummaryChip(this.label, this.count, this.color);
+  const _SummaryCount({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      Text('$count', style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
-      Text(label, style: const TextStyle(color: Color(0xFF7A9BAA), fontSize: 11)),
-    ]);
-  }
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$count',
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(color: context.ice.textMid, fontSize: 11),
+          ),
+        ],
+      );
 }
 
 /// Update-attendance entry point reuses the same screen.
@@ -677,6 +660,7 @@ class StaffUpdateAttendanceScreen extends StatelessWidget {
 
 class StaffResultsScreen extends ConsumerStatefulWidget {
   const StaffResultsScreen({super.key});
+
   @override
   ConsumerState<StaffResultsScreen> createState() => _StaffResultsScreenState();
 }
@@ -686,137 +670,133 @@ class _StaffResultsScreenState extends ConsumerState<StaffResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(
-            child: _Header(
-                title: 'Results',
-                subtitle: 'Record test & exam scores',
-                showBack: true),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: _GroupDropdown(
-                value: _groupId,
-                onChanged: (v) => setState(() => _groupId = v),
-              ),
-            ),
-          ),
-          if (_groupId == null)
-            _empty('Pick a group to begin', Icons.grade_outlined)
-          else
-            _roster(),
-        ],
-      ),
-    );
-  }
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
 
-  Widget _roster() {
-    final detail = ref.watch(groupDetailProvider(_groupId!));
-    final results = ref.watch(groupResultsProvider(_groupId!));
-    return detail.when(
-      loading: () => SliverToBoxAdapter(child: _loading()),
-      error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-      data: (d) {
-        final students = (d['enrolled_students'] as List?) ?? [];
-        if (students.isEmpty) {
-          return _empty('No students enrolled', Icons.person_off_outlined);
-        }
-        final byStudent = <int, Map<String, dynamic>>{};
-        results.maybeWhen(
-          data: (list) {
-            for (final r in list) {
-              byStudent[(r as Map)['student'] as int] =
-                  r as Map<String, dynamic>;
-            }
-          },
-          orElse: () {},
-        );
-        return SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-          sliver: SliverList.separated(
-            itemCount: students.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, i) {
-              final s = students[i] as Map<String, dynamic>;
-              final existing = byStudent[s['id'] as int];
-              return _ResultRow(
-                name: _studentName(s),
-                existing: existing,
-                onTap: () => _editResult(s, existing),
-              );
-            },
+    return IcePage(
+      title: s('Results'),
+      subtitle: s('Record test & exam scores'),
+      backButton: true,
+      children: [
+        _GroupDropdown(
+          value: _groupId,
+          onChanged: (v) => setState(() => _groupId = v),
+        ),
+        const SizedBox(height: 16),
+        if (_groupId == null)
+          IceCard(
+            child: EmptyState(
+              icon: Icons.grade_outlined,
+              title: s('Pick a group to begin'),
+              message: s('Select a group above to view and enter results.'),
+            ),
+          )
+        else
+          _ResultsRoster(
+            groupId: _groupId!,
+            onEditResult: (student, existing) =>
+                _editResult(t, student, existing),
           ),
-        );
-      },
+      ],
     );
   }
 
   Future<void> _editResult(
-      Map<String, dynamic> student, Map<String, dynamic>? existing) async {
-    final testC =
-        TextEditingController(text: existing?['test']?.toString() ?? '');
-    final examC =
-        TextEditingController(text: existing?['exam']?.toString() ?? '');
-    final commentC =
-        TextEditingController(text: existing?['comment']?.toString() ?? '');
+    IceTokens t,
+    Map<String, dynamic> student,
+    Map<String, dynamic>? existing,
+  ) async {
+    final testC = TextEditingController(
+      text: existing?['test']?.toString() ?? '',
+    );
+    final examC = TextEditingController(
+      text: existing?['exam']?.toString() ?? '',
+    );
+    final commentC = TextEditingController(
+      text: existing?['comment']?.toString() ?? '',
+    );
     var saving = false;
 
     await showDialog<void>(
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setLocal) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text(_studentName(student),
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: testC,
-                  keyboardType: TextInputType.number,
-                  decoration: _dec('Test'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: examC,
-                  keyboardType: TextInputType.number,
-                  decoration: _dec('Exam'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            TextField(
-              controller: commentC,
-              maxLines: 2,
-              decoration: _dec('Comment', hint: 'Optional'),
+          backgroundColor: t.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.stroke),
+          ),
+          title: Text(
+            _studentName(student),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: t.textHi,
             ),
-          ]),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: testC,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: t.textHi),
+                      decoration: const InputDecoration(labelText: 'Test'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: examC,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: t.textHi),
+                      decoration: const InputDecoration(labelText: 'Exam'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: commentC,
+                maxLines: 2,
+                style: TextStyle(color: t.textHi),
+                decoration: const InputDecoration(
+                  labelText: 'Comment',
+                  hintText: 'Optional',
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: saving ? null : () => Navigator.pop(dctx),
-              child: const Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: t.textMid)),
             ),
             FilledButton(
-              style:
-                  FilledButton.styleFrom(backgroundColor: IceColors.navyDeep),
+              style: FilledButton.styleFrom(
+                backgroundColor: t.accent,
+                foregroundColor: t.onAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: saving
                   ? null
                   : () async {
                       setLocal(() => saving = true);
                       try {
-                        await ApiClient.instance.dio.post('/results/', data: {
-                          'student_id': student['id'],
-                          'group_id': _groupId,
-                          'test': int.tryParse(testC.text.trim()) ?? 0,
-                          'exam': int.tryParse(examC.text.trim()) ?? 0,
-                          'comment': commentC.text.trim(),
-                        });
+                        await ApiClient.instance.dio.post(
+                          '/results/',
+                          data: {
+                            'student_id': student['id'],
+                            'group_id': _groupId,
+                            'test': int.tryParse(testC.text.trim()) ?? 0,
+                            'exam': int.tryParse(examC.text.trim()) ?? 0,
+                            'comment': commentC.text.trim(),
+                          },
+                        );
                         ref.invalidate(groupResultsProvider(_groupId!));
                         if (dctx.mounted) Navigator.pop(dctx);
                         if (mounted) _toast(context, 'Result saved.');
@@ -824,9 +804,10 @@ class _StaffResultsScreenState extends ConsumerState<StaffResultsScreen> {
                         setLocal(() => saving = false);
                         if (dctx.mounted) {
                           _toast(
-                              dctx,
-                              e.response?.data?['detail']?.toString() ??
-                                  'Could not save.');
+                            dctx,
+                            e.response?.data?['detail']?.toString() ??
+                                'Could not save.',
+                          );
                         }
                       }
                     },
@@ -839,55 +820,134 @@ class _StaffResultsScreenState extends ConsumerState<StaffResultsScreen> {
   }
 }
 
+class _ResultsRoster extends ConsumerWidget {
+  final int groupId;
+  final void Function(Map<String, dynamic>, Map<String, dynamic>?) onEditResult;
+  const _ResultsRoster({
+    required this.groupId,
+    required this.onEditResult,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = ref.watch(groupDetailProvider(groupId));
+    final results = ref.watch(groupResultsProvider(groupId));
+
+    return detail.when(
+      loading: () => const PageSkeleton(),
+      error: (e, _) => ErrorState(
+        error: e,
+        onRetry: () => ref.invalidate(groupDetailProvider(groupId)),
+      ),
+      data: (d) {
+        final students = (d['enrolled_students'] as List?) ?? [];
+        if (students.isEmpty) {
+          return IceCard(
+            child: EmptyState(
+              icon: Icons.person_off_outlined,
+              title: 'No students enrolled',
+            ),
+          );
+        }
+        final byStudent = <int, Map<String, dynamic>>{};
+        results.maybeWhen(
+          data: (list) {
+            for (final r in list) {
+              byStudent[(r as Map)['student'] as int] =
+                  r as Map<String, dynamic>;
+            }
+          },
+          orElse: () {},
+        );
+        return Column(
+          children: [
+            for (var i = 0; i < students.length; i++) ...[
+              _ResultRow(
+                name: _studentName(students[i] as Map<String, dynamic>),
+                existing: byStudent[students[i]['id'] as int],
+                onTap: () => onEditResult(
+                  students[i] as Map<String, dynamic>,
+                  byStudent[students[i]['id'] as int],
+                ),
+              ),
+              if (i < students.length - 1) const SizedBox(height: 8),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ResultRow extends StatelessWidget {
   final String name;
   final Map<String, dynamic>? existing;
   final VoidCallback onTap;
-  const _ResultRow(
-      {required this.name, required this.existing, required this.onTap});
+  const _ResultRow({
+    required this.name,
+    required this.existing,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     final has = existing != null;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
+    return IceCard(
+      padding: const EdgeInsets.all(14),
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: IceColors.border)),
-        padding: const EdgeInsets.all(14),
-        child: Row(children: [
+      child: Row(
+        children: [
           Expanded(
-            child: Text(name,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              name,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: t.textHi,
+              ),
+            ),
           ),
           if (has) ...[
-            _scorePill('T', existing!['test']),
+            _ScorePill('T', existing!['test']),
             const SizedBox(width: 6),
-            _scorePill('E', existing!['exam']),
+            _ScorePill('E', existing!['exam']),
           ] else
-            const Text('Tap to add',
-                style: TextStyle(fontSize: 12, color: IceColors.muted)),
+            Text(
+              'Tap to add',
+              style: TextStyle(fontSize: 12, color: t.textMid),
+            ),
           const SizedBox(width: 6),
-          const Icon(Icons.edit_rounded, size: 18, color: IceColors.navyDeep),
-        ]),
+          Icon(Icons.edit_rounded, size: 18, color: t.accentInk),
+        ],
       ),
     );
   }
+}
 
-  Widget _scorePill(String k, dynamic v) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-            color: IceColors.navyDeep.withAlpha(18),
-            borderRadius: BorderRadius.circular(8)),
-        child: Text('$k ${v ?? 0}',
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: IceColors.navyDeep)),
-      );
+class _ScorePill extends StatelessWidget {
+  final String k;
+  final dynamic v;
+  const _ScorePill(this.k, this.v);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: t.accentSoft,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$k ${v ?? 0}',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: t.accentInk,
+        ),
+      ),
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -896,93 +956,78 @@ class _ResultRow extends StatelessWidget {
 
 class StaffAssignmentsScreen extends ConsumerStatefulWidget {
   const StaffAssignmentsScreen({super.key});
+
   @override
-  ConsumerState<StaffAssignmentsScreen> createState() => _StaffAssignmentsScreenState();
+  ConsumerState<StaffAssignmentsScreen> createState() =>
+      _StaffAssignmentsScreenState();
 }
 
-class _StaffAssignmentsScreenState extends ConsumerState<StaffAssignmentsScreen> {
-  static const _bg     = Color(0xFF081A20);
-  static const _card   = Color(0xFF132D38);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _lime   = Color(0xFFDFFF2F);
-  static const _muted  = Color(0xFF7A9BAA);
-  static const _white  = Colors.white;
-
+class _StaffAssignmentsScreenState
+    extends ConsumerState<StaffAssignmentsScreen> {
   String _filter = 'Active';
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final items = ref.watch(staffAssignmentsProvider);
+
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: t.bg,
       floatingActionButton: FloatingActionButton(
-        backgroundColor: _lime,
-        foregroundColor: _bg,
+        backgroundColor: t.accent,
+        foregroundColor: t.onAccent,
         onPressed: () => _createDialog(context, ref),
         child: const Icon(Icons.add_rounded),
       ),
-      body: SafeArea(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Assignments', style: TextStyle(color: _white, fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              const Text('Manage and track student assignments', style: TextStyle(color: _muted, fontSize: 13)),
-              const SizedBox(height: 14),
-              // Filter chips
-              Row(children: [
-                for (final f in ['Active', 'Scheduled', 'Drafts'])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _filter = f),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _filter == f ? _lime : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _filter == f ? _lime : _stroke),
-                        ),
-                        child: Text(f, style: TextStyle(
-                          color: _filter == f ? _bg : _muted,
-                          fontSize: 13, fontWeight: FontWeight.w700,
-                        )),
-                      ),
-                    ),
-                  ),
-              ]),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: RefreshIndicator(
-              color: _lime,
-              onRefresh: () => ref.refresh(staffAssignmentsProvider.future),
-              child: items.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: _lime)),
-                error: (e, _) => Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
-                data: (list) {
-                  if (list.isEmpty) {
-                    return const Center(child: Text('No assignments yet.', style: TextStyle(color: _muted)));
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _DarkAssignmentCard(a: list[i] as Map<String, dynamic>),
-                  );
-                },
+      body: items.when(
+        loading: () => const PageSkeleton(),
+        error: (e, _) => ErrorState(
+          error: e,
+          onRetry: () => ref.invalidate(staffAssignmentsProvider),
+        ),
+        data: (list) => IcePage(
+          title: s('Assignments'),
+          subtitle: s('Manage and track student assignments'),
+          onRefresh: () => ref.refresh(staffAssignmentsProvider.future),
+          children: [
+            // Filter chips
+            IceChipTabs(
+              tabs: const ['Active', 'Scheduled', 'Drafts'],
+              index: ['Active', 'Scheduled', 'Drafts'].indexOf(_filter),
+              onChanged: (i) => setState(
+                () => _filter = ['Active', 'Scheduled', 'Drafts'][i],
               ),
             ),
-          ),
-        ]),
+            const SizedBox(height: 16),
+
+            if (list.isEmpty)
+              IceCard(
+                child: EmptyState(
+                  icon: Icons.assignment_outlined,
+                  title: s('No assignments yet'),
+                  message: s(
+                    'Create your first assignment using the + button.',
+                  ),
+                ),
+              )
+            else
+              ...list.map(
+                (a) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AssignmentCard(a: a as Map<String, dynamic>),
+                ),
+              ),
+            // Extra bottom padding for FAB
+            const SizedBox(height: 60),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _createDialog(BuildContext context, WidgetRef ref) async {
+    final t = context.ice;
     int? groupId;
     final titleC = TextEditingController();
     final descC = TextEditingController();
@@ -993,63 +1038,105 @@ class _StaffAssignmentsScreenState extends ConsumerState<StaffAssignmentsScreen>
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setLocal) => AlertDialog(
-          backgroundColor: _card,
-          title: const Text('New assignment', style: TextStyle(fontWeight: FontWeight.w800, color: _white)),
+          backgroundColor: t.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.stroke),
+          ),
+          title: Text(
+            'New Assignment',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: t.textHi,
+            ),
+          ),
           content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _DarkGroupDropdown(value: groupId, onChanged: (v) => setLocal(() => groupId = v)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: titleC,
-                style: const TextStyle(color: _white),
-                decoration: InputDecoration(
-                  labelText: 'Title', labelStyle: const TextStyle(color: _muted),
-                  filled: true, fillColor: const Color(0xFF081A20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _GroupDropdown(
+                  value: groupId,
+                  onChanged: (v) => setLocal(() => groupId = v),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descC, maxLines: 3,
-                style: const TextStyle(color: _white),
-                decoration: InputDecoration(
-                  labelText: 'Description', labelStyle: const TextStyle(color: _muted),
-                  hintText: 'Optional', hintStyle: const TextStyle(color: _muted),
-                  filled: true, fillColor: const Color(0xFF081A20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _stroke)),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: titleC,
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(labelText: 'Title'),
                 ),
-              ),
-              const SizedBox(height: 10),
-              _DarkDatePicker(date: due ?? DateTime.now(), onPick: (d) => setLocal(() => due = d)),
-            ]),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: descC,
+                  maxLines: 3,
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Optional',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _IceDatePicker(
+                  date: due ?? DateTime.now(),
+                  onPick: (d) => setLocal(() => due = d),
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(onPressed: saving ? null : () => Navigator.pop(dctx), child: const Text('Cancel', style: TextStyle(color: _muted))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _lime, foregroundColor: _bg),
-              onPressed: saving ? null : () async {
-                if (groupId == null || titleC.text.trim().isEmpty) {
-                  _toast(dctx, 'Pick a group and enter a title.');
-                  return;
-                }
-                setLocal(() => saving = true);
-                try {
-                  await ApiClient.instance.dio.post('/assignments/', data: {
-                    'group': groupId,
-                    'title': titleC.text.trim(),
-                    'description': descC.text.trim(),
-                    if (due != null) 'due_date': DateFormat('yyyy-MM-dd').format(due!),
-                  });
-                  ref.invalidate(staffAssignmentsProvider);
-                  if (dctx.mounted) Navigator.pop(dctx);
-                } on DioException catch (e) {
-                  setLocal(() => saving = false);
-                  if (dctx.mounted) _toast(dctx, e.response?.data?['detail']?.toString() ?? 'Could not create.');
-                }
-              },
-              child: const Text('Create'),
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dctx),
+              child: Text('Cancel', style: TextStyle(color: t.textMid)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: t.accent,
+                foregroundColor: t.onAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (groupId == null || titleC.text.trim().isEmpty) {
+                        _toast(dctx, 'Pick a group and enter a title.');
+                        return;
+                      }
+                      setLocal(() => saving = true);
+                      try {
+                        await ApiClient.instance.dio.post(
+                          '/assignments/',
+                          data: {
+                            'group': groupId,
+                            'title': titleC.text.trim(),
+                            'description': descC.text.trim(),
+                            if (due != null)
+                              'due_date': DateFormat('yyyy-MM-dd').format(due!),
+                          },
+                        );
+                        ref.invalidate(staffAssignmentsProvider);
+                        if (dctx.mounted) Navigator.pop(dctx);
+                      } on DioException catch (e) {
+                        setLocal(() => saving = false);
+                        if (dctx.mounted) {
+                          _toast(
+                            dctx,
+                            e.response?.data?['detail']?.toString() ??
+                                'Could not create.',
+                          );
+                        }
+                      }
+                    },
+              child: saving
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: t.onAccent,
+                      ),
+                    )
+                  : const Text('Create'),
             ),
           ],
         ),
@@ -1058,97 +1145,114 @@ class _StaffAssignmentsScreenState extends ConsumerState<StaffAssignmentsScreen>
   }
 }
 
-class _DarkAssignmentCard extends StatelessWidget {
+class _AssignmentCard extends StatelessWidget {
   final Map<String, dynamic> a;
-  const _DarkAssignmentCard({required this.a});
-
-  static const _bg     = Color(0xFF081A20);
-  static const _card   = Color(0xFF132D38);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _lime   = Color(0xFFDFFF2F);
-  static const _muted  = Color(0xFF7A9BAA);
-  static const _white  = Colors.white;
+  const _AssignmentCard({required this.a});
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     final due = a['due_date']?.toString();
     final groupName = a['group_name']?.toString();
     final submitted = a['submitted_count'] as int? ?? 0;
-    final total = a['total_students'] as int? ?? 30;
+    final total = a['total_students'] as int? ?? 0;
     final progress = total > 0 ? submitted / total : 0.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _card, borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _stroke),
-      ),
+    return IceCard(
       padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 42, height: 42,
-            decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.assignment_rounded, color: Color(0xFF7A9BAA), size: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: t.accentSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.assignment_rounded,
+                  color: t.accentInk,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      a['title']?.toString() ?? 'Assignment',
+                      style: TextStyle(
+                        color: t.textHi,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (due != null && due.isNotEmpty)
+                      Text(
+                        'Due $due',
+                        style: TextStyle(color: t.textMid, fontSize: 12),
+                      ),
+                  ],
+                ),
+              ),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$submitted',
+                      style: TextStyle(
+                        color: t.accentInk,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' /${total > 0 ? total : '—'}',
+                      style: TextStyle(color: t.textMid, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(a['title']?.toString() ?? 'Assignment',
-                  style: const TextStyle(color: _white, fontWeight: FontWeight.w800, fontSize: 15)),
-              if (due != null && due.isNotEmpty)
-                Text('Due $due', style: const TextStyle(color: _muted, fontSize: 12)),
-            ]),
+          const SizedBox(height: 10),
+          // Tags
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (groupName != null)
+                StatusBadge(groupName.toUpperCase(), tone: BadgeTone.neutral),
+              if (a['subject'] != null)
+                StatusBadge(
+                  a['subject'].toString().toUpperCase(),
+                  tone: BadgeTone.neutral,
+                ),
+            ],
           ),
-          RichText(
-            text: TextSpan(children: [
-              TextSpan(text: '$submitted', style: const TextStyle(color: _lime, fontWeight: FontWeight.w900, fontSize: 16)),
-              TextSpan(text: ' /$total', style: const TextStyle(color: _muted, fontSize: 13)),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 10),
-        // Tags
-        Wrap(spacing: 6, runSpacing: 4, children: [
-          if (groupName != null)
-            _Tag(groupName.toUpperCase()),
-          if (a['subject'] != null)
-            _Tag(a['subject'].toString().toUpperCase()),
-        ]),
-        const SizedBox(height: 10),
-        // Progress bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            backgroundColor: _bg,
-            valueColor: const AlwaysStoppedAnimation(_lime),
-            minHeight: 4,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text('Submitted', style: TextStyle(color: _muted, fontSize: 10)),
-      ]),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  final String label;
-  const _Tag(this.label);
-
-  static const _bg     = Color(0xFF081A20);
-  static const _stroke = Color(0xFF1E3D4A);
-  static const _white  = Colors.white;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: _bg, borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _stroke),
+          if (total > 0) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                backgroundColor: t.inset,
+                valueColor: AlwaysStoppedAnimation(t.accentInk),
+                minHeight: 4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Submitted',
+              style: TextStyle(color: t.textLow, fontSize: 10),
+            ),
+          ],
+        ],
       ),
-      child: Text(label, style: const TextStyle(color: _white, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -1162,45 +1266,47 @@ class StaffVocabularyScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final days = ref.watch(staffVocabularyProvider);
+
     return Scaffold(
-      backgroundColor: IceColors.bg,
+      backgroundColor: t.bg,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: IceColors.navyDeep,
+        backgroundColor: t.accent,
+        foregroundColor: t.onAccent,
         onPressed: () => _createDayDialog(context, ref),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New day', style: TextStyle(color: Colors.white)),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New day'),
       ),
-      body: RefreshIndicator(
-        color: IceColors.navyDeep,
-        onRefresh: () => ref.refresh(staffVocabularyProvider.future),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            const SliverToBoxAdapter(
-              child: _Header(
-                  title: 'Vocabulary',
-                  subtitle: 'Word sets for your groups',
-                  showBack: true),
-            ),
-            days.when(
-              loading: () => SliverToBoxAdapter(child: _loading()),
-              error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-              data: (list) {
-                if (list.isEmpty) {
-                  return _empty('No vocabulary days yet', Icons.menu_book_outlined);
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  sliver: SliverList.separated(
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) =>
-                        _VocabDayCard(day: list[i] as Map<String, dynamic>),
-                  ),
-                );
-              },
-            ),
+      body: days.when(
+        loading: () => const PageSkeleton(),
+        error: (e, _) => ErrorState(
+          error: e,
+          onRetry: () => ref.invalidate(staffVocabularyProvider),
+        ),
+        data: (list) => IcePage(
+          title: s('Vocabulary'),
+          subtitle: s('Word sets for your groups'),
+          backButton: true,
+          onRefresh: () => ref.refresh(staffVocabularyProvider.future),
+          children: [
+            if (list.isEmpty)
+              IceCard(
+                child: EmptyState(
+                  icon: Icons.menu_book_outlined,
+                  title: s('No vocabulary days yet'),
+                  message: s('Create your first vocabulary set with the + button.'),
+                ),
+              )
+            else
+              ...list.map(
+                (day) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _VocabDayCard(day: day as Map<String, dynamic>),
+                ),
+              ),
+            const SizedBox(height: 60),
           ],
         ),
       ),
@@ -1208,6 +1314,7 @@ class StaffVocabularyScreen extends ConsumerWidget {
   }
 
   Future<void> _createDayDialog(BuildContext context, WidgetRef ref) async {
+    final t = context.ice;
     int? groupId;
     final dayC = TextEditingController();
     final titleC = TextEditingController();
@@ -1217,31 +1324,61 @@ class StaffVocabularyScreen extends ConsumerWidget {
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setLocal) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('New vocabulary day',
-              style: TextStyle(fontWeight: FontWeight.w800)),
+          backgroundColor: t.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.stroke),
+          ),
+          title: Text(
+            'New vocabulary day',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: t.textHi,
+            ),
+          ),
           content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _GroupDropdown(
-                  value: groupId, onChanged: (v) => setLocal(() => groupId = v)),
-              const SizedBox(height: 10),
-              TextField(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _GroupDropdown(
+                  value: groupId,
+                  onChanged: (v) => setLocal(() => groupId = v),
+                ),
+                const SizedBox(height: 10),
+                TextField(
                   controller: dayC,
                   keyboardType: TextInputType.number,
-                  decoration: _dec('Day number', hint: 'e.g. 1')),
-              const SizedBox(height: 10),
-              TextField(
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(
+                    labelText: 'Day number',
+                    hintText: 'e.g. 1',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
                   controller: titleC,
-                  decoration: _dec('Title', hint: 'Optional')),
-            ]),
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    hintText: 'Optional',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: saving ? null : () => Navigator.pop(dctx),
-                child: const Text('Cancel')),
+              onPressed: saving ? null : () => Navigator.pop(dctx),
+              child: Text('Cancel', style: TextStyle(color: t.textMid)),
+            ),
             FilledButton(
-              style:
-                  FilledButton.styleFrom(backgroundColor: IceColors.navyDeep),
+              style: FilledButton.styleFrom(
+                backgroundColor: t.accent,
+                foregroundColor: t.onAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: saving
                   ? null
                   : () async {
@@ -1252,7 +1389,6 @@ class StaffVocabularyScreen extends ConsumerWidget {
                       }
                       setLocal(() => saving = true);
                       try {
-                        // release_at is required; release immediately.
                         await ApiClient.instance.dio
                             .post('/staff/vocabulary/create/', data: {
                           'group': groupId,
@@ -1267,9 +1403,10 @@ class StaffVocabularyScreen extends ConsumerWidget {
                         setLocal(() => saving = false);
                         if (dctx.mounted) {
                           _toast(
-                              dctx,
-                              e.response?.data?['detail']?.toString() ??
-                                  'Could not create.');
+                            dctx,
+                            e.response?.data?['detail']?.toString() ??
+                                'Could not create.',
+                          );
                         }
                       }
                     },
@@ -1288,59 +1425,63 @@ class _VocabDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     final released = day['is_released'] == true;
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => StaffVocabularyDetailScreen(
-            vocabId: (day['id'] as int).toString()),
-      )),
-      child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: IceColors.border)),
-        padding: const EdgeInsets.all(16),
-        child: Row(children: [
+    return IceCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => StaffVocabularyDetailScreen(
+            vocabId: (day['id'] as int).toString(),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
           Container(
             width: 46,
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: IceColors.navyDeep.withAlpha(20),
-                borderRadius: BorderRadius.circular(13)),
-            child: Text('${day['day_number'] ?? '?'}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w900, color: IceColors.navyDeep)),
+              color: t.accentSoft,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Text(
+              '${day['day_number'] ?? '?'}',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: t.accentInk,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   (day['title']?.toString().isNotEmpty ?? false)
                       ? day['title'].toString()
                       : 'Day ${day['day_number']}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 15)),
-              const SizedBox(height: 2),
-              Text(
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: t.textHi,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
                   '${day['group_name'] ?? ''} · ${day['word_count'] ?? 0} words',
-                  style: const TextStyle(fontSize: 12.5, color: IceColors.muted)),
-            ]),
+                  style: TextStyle(fontSize: 12.5, color: t.textMid),
+                ),
+              ],
+            ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-                color: (released ? IceColors.success : IceColors.warning)
-                    .withAlpha(22),
-                borderRadius: BorderRadius.circular(20)),
-            child: Text(released ? 'Released' : 'Scheduled',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: released ? IceColors.success : IceColors.warning)),
+          StatusBadge(
+            released ? 'Released' : 'Scheduled',
+            tone: released ? BadgeTone.accent : BadgeTone.amber,
           ),
-        ]),
+        ],
       ),
     );
   }
@@ -1354,53 +1495,84 @@ class StaffVocabularyDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
     final detail = ref.watch(staffVocabDetailProvider(_id));
+
     return Scaffold(
-      backgroundColor: IceColors.bg,
+      backgroundColor: t.bg,
       appBar: AppBar(
-        backgroundColor: IceColors.navyDeep,
-        foregroundColor: Colors.white,
-        title: const Text('Vocabulary day'),
+        backgroundColor: t.card,
+        foregroundColor: t.textHi,
+        title: Text(
+          'Vocabulary Day',
+          style: TextStyle(
+            color: t.textHi,
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+          ),
+        ),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: t.stroke),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: IceColors.navyDeep,
-        onPressed: () => _addWordDialog(context, ref),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add word', style: TextStyle(color: Colors.white)),
+        backgroundColor: t.accent,
+        foregroundColor: t.onAccent,
+        onPressed: () => _addWordDialog(context, ref, t),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add word'),
       ),
       body: detail.when(
-        loading: () => _loading(),
-        error: (e, _) => _error(e),
+        loading: () => const PageSkeleton(),
+        error: (e, _) => ErrorState(
+          error: e,
+          onRetry: () => ref.invalidate(staffVocabDetailProvider(_id)),
+        ),
         data: (d) {
           final words = (d['words'] as List?) ?? [];
-          return RefreshIndicator(
-            color: IceColors.navyDeep,
+          return IceRefresh(
             onRefresh: () => ref.refresh(staffVocabDetailProvider(_id).future),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
               children: [
                 Text(
-                    (d['title']?.toString().isNotEmpty ?? false)
-                        ? d['title'].toString()
-                        : 'Day ${d['day_number']}',
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w900)),
+                  (d['title']?.toString().isNotEmpty ?? false)
+                      ? d['title'].toString()
+                      : 'Day ${d['day_number']}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: t.textHi,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('${d['group_name'] ?? ''} · ${words.length} words',
-                    style: const TextStyle(color: IceColors.muted)),
+                Text(
+                  '${d['group_name'] ?? ''} · ${words.length} words',
+                  style: TextStyle(color: t.textMid),
+                ),
                 const SizedBox(height: 16),
                 if (words.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 40),
-                    child: Center(
-                      child: Text('No words yet. Tap “Add word”.',
-                          style: TextStyle(color: IceColors.muted)),
+                  IceCard(
+                    child: EmptyState(
+                      icon: Icons.translate_rounded,
+                      title: 'No words yet',
+                      message: 'Tap "Add word" to get started.',
                     ),
                   )
                 else
-                  ...words.map((w) =>
-                      _WordTile(id: _id, word: w as Map<String, dynamic>)),
+                  ...words.map(
+                    (w) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _WordTile(
+                        id: _id,
+                        word: w as Map<String, dynamic>,
+                      ),
+                    ),
+                  ),
               ],
             ),
           );
@@ -1409,7 +1581,11 @@ class StaffVocabularyDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _addWordDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _addWordDialog(
+    BuildContext context,
+    WidgetRef ref,
+    IceTokens t,
+  ) async {
     final wordC = TextEditingController();
     final meaningC = TextEditingController();
     final exampleC = TextEditingController();
@@ -1419,28 +1595,59 @@ class StaffVocabularyDetailScreen extends ConsumerWidget {
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setLocal) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Add word',
-              style: TextStyle(fontWeight: FontWeight.w800)),
+          backgroundColor: t.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.stroke),
+          ),
+          title: Text(
+            'Add word',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: t.textHi,
+            ),
+          ),
           content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: wordC, decoration: _dec('Word')),
-              const SizedBox(height: 10),
-              TextField(controller: meaningC, decoration: _dec('Meaning')),
-              const SizedBox(height: 10),
-              TextField(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: wordC,
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(labelText: 'Word'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: meaningC,
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(labelText: 'Meaning'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
                   controller: exampleC,
                   maxLines: 2,
-                  decoration: _dec('Example', hint: 'Optional')),
-            ]),
+                  style: TextStyle(color: t.textHi),
+                  decoration: const InputDecoration(
+                    labelText: 'Example',
+                    hintText: 'Optional',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: saving ? null : () => Navigator.pop(dctx),
-                child: const Text('Cancel')),
+              onPressed: saving ? null : () => Navigator.pop(dctx),
+              child: Text('Cancel', style: TextStyle(color: t.textMid)),
+            ),
             FilledButton(
-              style:
-                  FilledButton.styleFrom(backgroundColor: IceColors.navyDeep),
+              style: FilledButton.styleFrom(
+                backgroundColor: t.accent,
+                foregroundColor: t.onAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: saving
                   ? null
                   : () async {
@@ -1464,9 +1671,10 @@ class StaffVocabularyDetailScreen extends ConsumerWidget {
                         setLocal(() => saving = false);
                         if (dctx.mounted) {
                           _toast(
-                              dctx,
-                              e.response?.data?['detail']?.toString() ??
-                                  'Could not add.');
+                            dctx,
+                            e.response?.data?['detail']?.toString() ??
+                                'Could not add.',
+                          );
                         }
                       }
                     },
@@ -1486,46 +1694,56 @@ class _WordTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: IceColors.border)),
+    final t = context.ice;
+    return IceCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(word['word']?.toString() ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 2),
-            Text(word['meaning']?.toString() ?? '',
-                style: const TextStyle(fontSize: 13, color: IceColors.muted)),
-            if ((word['example_sentence']?.toString() ?? '').isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text('“${word['example_sentence']}”',
-                  style: const TextStyle(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  word['word']?.toString() ?? '',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: t.textHi,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  word['meaning']?.toString() ?? '',
+                  style: TextStyle(fontSize: 13, color: t.textMid),
+                ),
+                if ((word['example_sentence']?.toString() ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '"${word['example_sentence']}"',
+                    style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
-                      color: IceColors.muted)),
-            ],
-          ]),
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline_rounded,
-              color: IceColors.danger, size: 20),
-          onPressed: () async {
-            try {
-              await ApiClient.instance.dio
-                  .delete('/staff/vocabulary/$id/words/${word['id']}/');
-              ref.invalidate(staffVocabDetailProvider(id));
-              ref.invalidate(staffVocabularyProvider);
-            } on DioException {
-              if (context.mounted) _toast(context, 'Could not delete.');
-            }
-          },
-        ),
-      ]),
+                      color: t.textLow,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline_rounded, color: t.coral, size: 20),
+            onPressed: () async {
+              try {
+                await ApiClient.instance.dio
+                    .delete('/staff/vocabulary/$id/words/${word['id']}/');
+                ref.invalidate(staffVocabDetailProvider(id));
+                ref.invalidate(staffVocabularyProvider);
+              } on DioException {
+                if (context.mounted) _toast(context, 'Could not delete.');
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1536,6 +1754,7 @@ class _WordTile extends ConsumerWidget {
 
 class StaffLeaveScreen extends ConsumerStatefulWidget {
   const StaffLeaveScreen({super.key});
+
   @override
   ConsumerState<StaffLeaveScreen> createState() => _StaffLeaveScreenState();
 }
@@ -1579,74 +1798,96 @@ class _StaffLeaveScreenState extends ConsumerState<StaffLeaveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final leaves = ref.watch(leaveProvider);
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(
-            child: _Header(title: 'Leave', subtitle: 'Request time off', showBack: true),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(children: [
-                _DatePickerField(
-                    date: _date,
-                    label: 'Date',
-                    onPick: (d) => setState(() => _date = d)),
-                const SizedBox(height: 12),
-                TextField(
-                    controller: _reason,
-                    maxLines: 3,
-                    decoration: _dec('Reason', hint: 'Briefly explain…')),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: IceColors.navyDeep,
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Submit request'),
+
+    return IcePage(
+      title: s('Leave'),
+      subtitle: s('Request time off'),
+      backButton: true,
+      onRefresh: () => ref.refresh(leaveProvider.future),
+      children: [
+        // Date picker
+        GestureDetector(
+          onTap: () async {
+            final now = DateTime.now();
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _date ?? now,
+              firstDate: now.subtract(const Duration(days: 60)),
+              lastDate: now.add(const Duration(days: 365)),
+            );
+            if (picked != null) setState(() => _date = picked);
+          },
+          child: IceCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 16, color: t.textMid),
+                const SizedBox(width: 12),
+                Text(
+                  _date != null
+                      ? DateFormat('MMM d, yyyy').format(_date!)
+                      : 'Select date',
+                  style: TextStyle(
+                    color: _date != null ? t.textHi : t.textLow,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('History',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
-                ),
-              ]),
+              ],
             ),
           ),
-          leaves.when(
-            loading: () => SliverToBoxAdapter(child: _loading()),
-            error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-            data: (list) {
-              if (list.isEmpty) {
-                return _empty('No leave requests', Icons.event_busy_outlined);
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                sliver: SliverList.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      _LeaveCard(leave: list[i] as Map<String, dynamic>),
+        ),
+        const SizedBox(height: 12),
+
+        TextField(
+          controller: _reason,
+          maxLines: 3,
+          style: TextStyle(color: t.textHi),
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Briefly explain…',
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        IceButton(
+          s('Submit request'),
+          busy: _busy,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 22),
+
+        SectionHeader(s('History')),
+
+        leaves.when(
+          loading: () => const SkeletonBox(height: 80),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(leaveProvider),
+          ),
+          data: (list) {
+            if (list.isEmpty) {
+              return IceCard(
+                child: EmptyState(
+                  icon: Icons.event_busy_outlined,
+                  title: s('No leave requests'),
+                  message: s('Your submitted requests will appear here.'),
                 ),
               );
-            },
-          ),
-        ],
-      ),
+            }
+            return Column(
+              children: [
+                for (var i = 0; i < list.length; i++) ...[
+                  _LeaveCard(leave: list[i] as Map<String, dynamic>),
+                  if (i < list.length - 1) const SizedBox(height: 8),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -1657,42 +1898,41 @@ class _LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     final st = leave['status'];
-    final (label, color) = switch (st) {
-      1 => ('Approved', IceColors.success),
-      -1 => ('Rejected', IceColors.danger),
-      _ => ('Pending', IceColors.warning),
+    final (tone, label) = switch (st) {
+      1 => (BadgeTone.accent, 'Approved'),
+      -1 => (BadgeTone.coral, 'Rejected'),
+      _ => (BadgeTone.amber, 'Pending'),
     };
-    return Container(
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: IceColors.border)),
+    return IceCard(
       padding: const EdgeInsets.all(14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Text(fmtDate(leave['date']?.toString()),
-                style: const TextStyle(fontWeight: FontWeight.w800)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  fmtDate(leave['date']?.toString()),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: t.textHi,
+                  ),
+                ),
+              ),
+              StatusBadge(label, tone: tone),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-                color: color.withAlpha(22),
-                borderRadius: BorderRadius.circular(20)),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
-          ),
-        ]),
-        if ((leave['message']?.toString() ?? '').isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(leave['message'].toString(),
-              style: const TextStyle(fontSize: 13, color: IceColors.muted)),
+          if ((leave['message']?.toString() ?? '').isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              leave['message'].toString(),
+              style: TextStyle(fontSize: 13, color: t.textMid),
+            ),
+          ],
         ],
-      ]),
+      ),
     );
   }
 }
@@ -1703,6 +1943,7 @@ class _LeaveCard extends StatelessWidget {
 
 class StaffFeedbackScreen extends ConsumerStatefulWidget {
   const StaffFeedbackScreen({super.key});
+
   @override
   ConsumerState<StaffFeedbackScreen> createState() =>
       _StaffFeedbackScreenState();
@@ -1741,73 +1982,62 @@ class _StaffFeedbackScreenState extends ConsumerState<StaffFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final items = ref.watch(feedbackProvider);
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(
-            child: _Header(
-                title: 'Feedback',
-                subtitle: 'Send a note to administration',
-                showBack: true),
+
+    return IcePage(
+      title: s('Feedback'),
+      subtitle: s('Send a note to administration'),
+      backButton: true,
+      onRefresh: () => ref.refresh(feedbackProvider.future),
+      children: [
+        TextField(
+          controller: _text,
+          maxLines: 4,
+          style: TextStyle(color: t.textHi),
+          decoration: const InputDecoration(
+            labelText: 'Your feedback',
+            hintText: 'Share a suggestion or concern…',
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(children: [
-                TextField(
-                    controller: _text,
-                    maxLines: 4,
-                    decoration: _dec('Your feedback',
-                        hint: 'Share a suggestion or concern…')),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: IceColors.navyDeep,
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Send feedback'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Previous feedback',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
-                ),
-              ]),
-            ),
+        ),
+        const SizedBox(height: 12),
+        IceButton(
+          s('Send feedback'),
+          busy: _busy,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 22),
+
+        SectionHeader(s('Previous feedback')),
+
+        items.when(
+          loading: () => const SkeletonBox(height: 80),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(feedbackProvider),
           ),
-          items.when(
-            loading: () => SliverToBoxAdapter(child: _loading()),
-            error: (e, _) => SliverToBoxAdapter(child: _error(e)),
-            data: (list) {
-              if (list.isEmpty) {
-                return _empty('No feedback yet', Icons.rate_review_outlined);
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                sliver: SliverList.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      _FeedbackCard(fb: list[i] as Map<String, dynamic>),
+          data: (list) {
+            if (list.isEmpty) {
+              return IceCard(
+                child: EmptyState(
+                  icon: Icons.rate_review_outlined,
+                  title: s('No feedback yet'),
+                  message: s('Your feedback history will appear here.'),
                 ),
               );
-            },
-          ),
-        ],
-      ),
+            }
+            return Column(
+              children: [
+                for (var i = 0; i < list.length; i++) ...[
+                  _FeedbackCard(fb: list[i] as Map<String, dynamic>),
+                  if (i < list.length - 1) const SizedBox(height: 8),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -1818,92 +2048,53 @@ class _FeedbackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     final reply = fb['reply']?.toString() ?? '';
-    return Container(
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: IceColors.border)),
+    return IceCard(
       padding: const EdgeInsets.all(14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(fb['feedback']?.toString() ?? '',
-            style: const TextStyle(
-                fontWeight: FontWeight.w600, color: IceColors.text)),
-        if (reply.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-                color: IceColors.surface2,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: IceColors.border)),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.reply_rounded,
-                  size: 16, color: IceColors.navyDeep),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(reply,
-                    style: const TextStyle(
-                        fontSize: 13, color: IceColors.text)),
-              ),
-            ]),
-          ),
-        ] else
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('Awaiting reply',
-                style: TextStyle(
-                    fontSize: 11.5,
-                    color: IceColors.muted,
-                    fontStyle: FontStyle.italic)),
-          ),
-      ]),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  Shared date-picker field
-// ════════════════════════════════════════════════════════════════════════════
-
-class _DatePickerField extends StatelessWidget {
-  final DateTime? date;
-  final String label;
-  final ValueChanged<DateTime> onPick;
-  const _DatePickerField({
-    required this.date,
-    this.label = 'Date',
-    required this.onPick,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: date ?? now,
-          firstDate: now.subtract(const Duration(days: 60)),
-          lastDate: now.add(const Duration(days: 365)),
-        );
-        if (picked != null) onPick(picked);
-      },
-      child: InputDecorator(
-        decoration: _dec(label),
-        child: Row(children: [
-          const Icon(Icons.calendar_today_rounded,
-              size: 16, color: IceColors.muted),
-          const SizedBox(width: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            date != null
-                ? DateFormat('MMM d, yyyy').format(date!)
-                : 'Select date',
-            style: TextStyle(
-                color: date != null ? IceColors.text : IceColors.muted,
-                fontWeight: FontWeight.w600),
+            fb['feedback']?.toString() ?? '',
+            style: TextStyle(fontWeight: FontWeight.w600, color: t.textHi),
           ),
-        ]),
+          if (reply.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: t.inset,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: t.stroke),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.reply_rounded, size: 16, color: t.accentInk),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      reply,
+                      style: TextStyle(fontSize: 13, color: t.textHi),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Awaiting reply',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: t.textLow,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

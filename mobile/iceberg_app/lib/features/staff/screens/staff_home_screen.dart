@@ -425,7 +425,7 @@ class _ScheduleCard extends StatelessWidget {
     final subtitle = [
       group['course_name']?.toString(),
       group['room'] != null ? 'Room ${group['room']}' : null,
-    ].where((e) => e != null && e!.isNotEmpty).join(' · ');
+    ].where((e) => e != null && e.isNotEmpty).join(' · ');
 
     return IceCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
