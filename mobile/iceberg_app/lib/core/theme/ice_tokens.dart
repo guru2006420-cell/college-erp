@@ -214,6 +214,32 @@ const icePageTransitionsTheme = PageTransitionsTheme(
   },
 );
 
+const _noDecor = TextStyle(
+  decoration: TextDecoration.none,
+  decorationColor: Colors.transparent,
+  decorationThickness: 0,
+);
+
+/// Strips all text-decoration from every slot in [theme] so that Material 3's
+/// colorScheme.primary cannot bleed through as lime underlines.
+TextTheme _noUnderlineTheme(TextTheme theme) => TextTheme(
+  displayLarge: (theme.displayLarge ?? const TextStyle()).merge(_noDecor),
+  displayMedium: (theme.displayMedium ?? const TextStyle()).merge(_noDecor),
+  displaySmall: (theme.displaySmall ?? const TextStyle()).merge(_noDecor),
+  headlineLarge: (theme.headlineLarge ?? const TextStyle()).merge(_noDecor),
+  headlineMedium: (theme.headlineMedium ?? const TextStyle()).merge(_noDecor),
+  headlineSmall: (theme.headlineSmall ?? const TextStyle()).merge(_noDecor),
+  titleLarge: (theme.titleLarge ?? const TextStyle()).merge(_noDecor),
+  titleMedium: (theme.titleMedium ?? const TextStyle()).merge(_noDecor),
+  titleSmall: (theme.titleSmall ?? const TextStyle()).merge(_noDecor),
+  bodyLarge: (theme.bodyLarge ?? const TextStyle()).merge(_noDecor),
+  bodyMedium: (theme.bodyMedium ?? const TextStyle()).merge(_noDecor),
+  bodySmall: (theme.bodySmall ?? const TextStyle()).merge(_noDecor),
+  labelLarge: (theme.labelLarge ?? const TextStyle()).merge(_noDecor),
+  labelMedium: (theme.labelMedium ?? const TextStyle()).merge(_noDecor),
+  labelSmall: (theme.labelSmall ?? const TextStyle()).merge(_noDecor),
+);
+
 /// Builds the student-app ThemeData carrying [IceTokens].
 ThemeData buildIceTheme({required bool dark, required Color accent}) {
   final t = dark
@@ -233,12 +259,14 @@ ThemeData buildIceTheme({required bool dark, required Color accent}) {
       onSurface: t.textHi,
       error: t.coral,
     ),
-    textTheme: base.textTheme.apply(
-      fontFamily: 'Inter',
-      bodyColor: t.textHi,
-      displayColor: t.textHi,
-      decoration: TextDecoration.none,
-      decorationColor: Colors.transparent,
+    textTheme: _noUnderlineTheme(
+      base.textTheme.apply(
+        fontFamily: 'Inter',
+        bodyColor: t.textHi,
+        displayColor: t.textHi,
+        decoration: TextDecoration.none,
+        decorationColor: Colors.transparent,
+      ),
     ),
     splashFactory: InkSparkle.splashFactory,
     pageTransitionsTheme: icePageTransitionsTheme,

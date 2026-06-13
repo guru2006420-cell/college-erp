@@ -1,3 +1,5 @@
+// Kill-switch service worker — unregisters itself immediately so stale caches
+// never serve outdated main.dart.js after a redeploy.
 self.addEventListener('install', function (e) { self.skipWaiting(); });
 self.addEventListener('activate', function (e) {
   e.waitUntil((async function () {

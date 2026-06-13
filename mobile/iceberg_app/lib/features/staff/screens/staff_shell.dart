@@ -40,25 +40,31 @@ class _StaffShellState extends ConsumerState<StaffShell> {
       value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Theme(
         data: theme,
-        child: MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(settings.textScale)),
-          child: Builder(
-            builder: (themed) => Scaffold(
-              backgroundColor: themed.ice.bg,
-              drawer: const IceDrawer(),
-              appBar: const IceHeader(),
-              body: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  child: widget.navigationShell,
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            decoration: TextDecoration.none,
+            decorationColor: Colors.transparent,
+          ),
+          child: MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(settings.textScale)),
+            child: Builder(
+              builder: (themed) => Scaffold(
+                backgroundColor: themed.ice.bg,
+                drawer: const IceDrawer(),
+                appBar: const IceHeader(),
+                body: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: widget.navigationShell,
+                  ),
                 ),
-              ),
-              bottomNavigationBar: _StaffBottomNav(
-                index: widget.navigationShell.currentIndex,
-                onTap: (i) => widget.navigationShell.goBranch(
-                  i,
-                  initialLocation: i == widget.navigationShell.currentIndex,
+                bottomNavigationBar: _StaffBottomNav(
+                  index: widget.navigationShell.currentIndex,
+                  onTap: (i) => widget.navigationShell.goBranch(
+                    i,
+                    initialLocation: i == widget.navigationShell.currentIndex,
+                  ),
                 ),
               ),
             ),

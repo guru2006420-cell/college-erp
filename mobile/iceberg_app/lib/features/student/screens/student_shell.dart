@@ -30,11 +30,17 @@ class StudentThemeScope extends ConsumerWidget {
       value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Theme(
         data: theme,
-        child: MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(settings.textScale)),
-          child: child,
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(
+            decoration: TextDecoration.none,
+            decorationColor: Colors.transparent,
+          ),
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(settings.textScale)),
+            child: child,
+          ),
         ),
       ),
     );
