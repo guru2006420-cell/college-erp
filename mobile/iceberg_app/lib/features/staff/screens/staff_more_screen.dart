@@ -2,148 +2,277 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/auth/auth_state.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/settings/app_settings.dart';
+import '../../../core/theme/ice_tokens.dart';
+import '../../../shared/widgets/ice_kit.dart';
 
 class StaffMoreScreen extends ConsumerWidget {
   const StaffMoreScreen({super.key});
 
-  static const _tiles = [
-    _MoreTile(icon: Icons.grade_rounded,           label: 'Results',      path: '/staff/results'),
-    _MoreTile(icon: Icons.assignment_rounded,       label: 'Assignments',  path: '/staff/assignments'),
-    _MoreTile(icon: Icons.menu_book_rounded,        label: 'Vocabulary',   path: '/staff/vocabulary'),
-    _MoreTile(icon: Icons.beach_access_rounded,     label: 'Leave',        path: '/staff/leave'),
-    _MoreTile(icon: Icons.rate_review_rounded,      label: 'Feedback',     path: '/staff/feedback'),
-    _MoreTile(icon: Icons.payment_rounded,          label: 'Payments',     path: '/staff/payments'),
-    _MoreTile(icon: Icons.notifications_rounded,    label: 'Notifications',path: '/staff/notifications'),
-    _MoreTile(icon: Icons.person_rounded,           label: 'Profile',      path: '/staff/profile'),
-    _MoreTile(icon: Icons.logout_rounded,           label: 'Logout',       path: '/login', isLogout: true),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final top = MediaQuery.paddingOf(context).top;
-    final cols = MediaQuery.of(context).size.width >= 600 ? 3 : 2;
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
+    final user = ref.watch(authProvider).user;
 
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.fromLTRB(20, top + 20, 20, 28),
-            decoration: const BoxDecoration(
-              gradient: kHeroGradient,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-            ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('More',
-                  style: TextStyle(
-                      color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900))
-                  .animate().slideX(begin: -0.1, duration: 400.ms).fadeIn(duration: 300.ms),
-              const SizedBox(height: 4),
-              Text('All teacher tools and settings',
-                  style: TextStyle(color: Colors.white.withAlpha(160), fontSize: 13))
-                  .animate(delay: 80.ms).fadeIn(),
-            ]),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.05,
-              ),
-              itemCount: _tiles.length,
-              itemBuilder: (context, i) => _MoreTileWidget(
-                _tiles[i],
-                i,
-                onTap: () {
-                  final tile = _tiles[i];
-                  if (tile.isLogout) {
-                    ref.read(authProvider.notifier).logout();
-                  } else {
-                    // Push (not go) so the feature page can return to More.
-                    context.push(tile.path);
-                  }
-                },
-              ),
-            ),
-          ),
-        ],
+    final initials = (() {
+      final full =
+          '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
+      if (full.isEmpty) return 'T';
+      return full
+          .split(' ')
+          .where((p) => p.isNotEmpty)
+          .take(2)
+          .map((p) => p[0])
+          .join()
+          .toUpperCase();
+    })();
+
+    final tiles = [
+      _TileSpec(
+        icon: Icons.grade_rounded,
+        label: s('Results'),
+        path: '/staff/results',
+        color: t.amber,
       ),
+      _TileSpec(
+        icon: Icons.assignment_rounded,
+        label: s('Assignments'),
+        path: '/staff/assignments',
+        color: t.sky,
+      ),
+      _TileSpec(
+        icon: Icons.menu_book_rounded,
+        label: s('Vocabulary'),
+        path: '/staff/vocabulary',
+        color: t.mint,
+      ),
+      _TileSpec(
+        icon: Icons.beach_access_rounded,
+        label: s('Leave'),
+        path: '/staff/leave',
+        color: t.accentInk,
+      ),
+      _TileSpec(
+        icon: Icons.rate_review_rounded,
+        label: s('Feedback'),
+        path: '/staff/feedback',
+        color: t.textMid,
+      ),
+      _TileSpec(
+        icon: Icons.payment_rounded,
+        label: s('Payments'),
+        path: '/staff/payments',
+        color: t.accentInk,
+      ),
+      _TileSpec(
+        icon: Icons.notifications_rounded,
+        label: s('Notifications'),
+        path: '/staff/notifications',
+        color: t.sky,
+      ),
+      _TileSpec(
+        icon: Icons.settings_outlined,
+        label: s('Settings'),
+        path: '/staff/settings',
+        color: t.textMid,
+      ),
+      _TileSpec(
+        icon: Icons.logout_rounded,
+        label: s('Log Out'),
+        path: '',
+        color: t.coral,
+        isLogout: true,
+      ),
+    ];
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      children: [
+        // ── Profile hero ──────────────────────────────────────────────
+        IceCard(
+          hero: true,
+          child: Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: t.accent.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: t.accent.withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: t.accent,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.fullName ?? s('Staff Member'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'ID ${user?.loginId ?? '—'}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => context.push('/staff/profile'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Text(
+                    s('Profile'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 300.ms).moveY(begin: 12, end: 0),
+        const SizedBox(height: 22),
+
+        // ── Grid of tools ─────────────────────────────────────────────
+        SectionHeader(s('Tools & Settings')),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.0,
+          ),
+          itemCount: tiles.length,
+          itemBuilder: (context, i) {
+            final tile = tiles[i];
+            return _MoreTileWidget(
+              tile: tile,
+              index: i,
+              onTap: () {
+                if (tile.isLogout) {
+                  ref.read(authProvider.notifier).logout();
+                } else {
+                  context.push(tile.path);
+                }
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }
 
-class _MoreTile {
+class _TileSpec {
   final IconData icon;
   final String label;
   final String path;
+  final Color color;
   final bool isLogout;
-  const _MoreTile({
+
+  const _TileSpec({
     required this.icon,
     required this.label,
     required this.path,
+    required this.color,
     this.isLogout = false,
   });
 }
 
 class _MoreTileWidget extends StatelessWidget {
-  final _MoreTile tile;
+  final _TileSpec tile;
   final int index;
   final VoidCallback onTap;
-  const _MoreTileWidget(this.tile, this.index, {required this.onTap});
+  const _MoreTileWidget({
+    required this.tile,
+    required this.index,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = tile.isLogout ? IceColors.danger : IceColors.navyDeep;
-    final bgColor = tile.isLogout ? IceColors.danger.withAlpha(20) : IceColors.surface2;
+    final t = context.ice;
+    final iconBg = tile.color.withValues(alpha: 0.13);
 
-    return Material(
-      color: IceColors.surface,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: IceColors.border, width: 1.5),
-            borderRadius: BorderRadius.circular(20),
+    return IceCard(
+      padding: EdgeInsets.zero,
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(tile.icon, color: tile.color, size: 24),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-                child: Icon(tile.icon, color: iconColor, size: 28),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              tile.label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: tile.isLogout ? t.coral : t.textHi,
               ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  tile.label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: tile.isLogout ? IceColors.danger : IceColors.text,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     )
         .animate(delay: Duration(milliseconds: 40 * index))
         .fadeIn(duration: 220.ms)
-        .scale(begin: const Offset(0.92, 0.92), duration: 220.ms, curve: Curves.easeOut);
+        .scale(
+          begin: const Offset(0.92, 0.92),
+          duration: 220.ms,
+          curve: Curves.easeOut,
+        );
   }
 }
