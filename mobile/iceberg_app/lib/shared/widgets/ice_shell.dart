@@ -130,7 +130,9 @@ class IceBottomNav extends ConsumerWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
           height: 64,
           child: Row(
             children: List.generate(items.length, (i) {
@@ -191,6 +193,7 @@ class IceBottomNav extends ConsumerWidget {
               );
             }),
           ),
+        ),
         ),
       ),
     );

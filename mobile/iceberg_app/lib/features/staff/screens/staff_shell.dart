@@ -107,10 +107,12 @@ class _StaffBottomNav extends ConsumerWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: List.generate(items.length, (i) {
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              children: List.generate(items.length, (i) {
               final active = i == index;
               final (icon, label) = items[i];
               return Expanded(
@@ -166,6 +168,7 @@ class _StaffBottomNav extends ConsumerWidget {
                 ),
               );
             }),
+            ),
           ),
         ),
       ),
