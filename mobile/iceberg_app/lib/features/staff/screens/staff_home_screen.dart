@@ -240,35 +240,50 @@ class _Dashboard extends ConsumerWidget {
           // ── Quick Actions ─────────────────────────────────────────────
           SectionHeader(s('Quick Actions')),
           IceCard(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _QuickAction(
-                  icon: Icons.how_to_reg_rounded,
-                  label: s('Attendance'),
-                  color: t.accentInk,
-                  onTap: () => context.push('/staff/attendance'),
-                ),
-                _QuickAction(
-                  icon: Icons.bar_chart_rounded,
-                  label: s('Results'),
-                  color: t.amber,
-                  onTap: () => context.push('/staff/results'),
-                ),
-                _QuickAction(
-                  icon: Icons.assignment_rounded,
-                  label: s('Assignment'),
-                  color: t.sky,
-                  onTap: () => context.push('/staff/assignments'),
-                ),
-                _QuickAction(
-                  icon: Icons.beach_access_rounded,
-                  label: s('Leave'),
-                  color: t.mint,
-                  onTap: () => context.push('/staff/leave'),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: [
+                  _QuickAction(
+                    icon: Icons.how_to_reg_rounded,
+                    label: s('Attendance'),
+                    color: t.accentInk,
+                    onTap: () => context.push('/staff/attendance'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.bar_chart_rounded,
+                    label: s('Results'),
+                    color: t.amber,
+                    onTap: () => context.push('/staff/results'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.assignment_rounded,
+                    label: s('Assignment'),
+                    color: t.sky,
+                    onTap: () => context.push('/staff/assignments'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.beach_access_rounded,
+                    label: s('Leave'),
+                    color: t.mint,
+                    onTap: () => context.push('/staff/leave'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.chat_rounded,
+                    label: s('Messages'),
+                    color: t.accent,
+                    onTap: () => context.push('/staff/messages'),
+                  ),
+                  _QuickAction(
+                    icon: Icons.class_outlined,
+                    label: s('My Classes'),
+                    color: t.coral,
+                    onTap: () => context.push('/staff/classes'),
+                  ),
+                ],
+              ),
             ),
           ).animate().fadeIn(delay: 100.ms, duration: 350.ms),
           const SizedBox(height: 22),
@@ -377,29 +392,34 @@ class _QuickAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: context.ice.textMid,
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.ice.textMid,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

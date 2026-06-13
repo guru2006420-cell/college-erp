@@ -22,6 +22,10 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
+    /* Reset browser text-decoration that leaks into Flutter's HTML renderer */
+    * { text-decoration: none !important; }
+    a, a:hover, a:visited { text-decoration: none !important; color: inherit; }
+
     /* Branded boot screen shown until Flutter takes over — matches the
        Django login page's navy backdrop so there is no white flash. */
     html, body { margin: 0; padding: 0; background: #06343A; height: 100%; }

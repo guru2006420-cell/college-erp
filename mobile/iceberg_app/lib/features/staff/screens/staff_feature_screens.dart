@@ -165,16 +165,24 @@ class _ClassCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  [
-                    group['course_name'],
-                    group['schedule'],
-                    group['room'] != null ? 'Room ${group['room']}' : null,
-                  ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-                  style: TextStyle(fontSize: 12.5, color: t.textMid),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if ((group['course_name']?.toString() ?? '').isNotEmpty)
+                  Text(
+                    group['course_name'].toString(),
+                    style: TextStyle(fontSize: 12.5, color: t.textMid),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if ((group['schedule']?.toString() ?? '').isNotEmpty ||
+                    group['room'] != null)
+                  Text(
+                    [
+                      group['schedule']?.toString(),
+                      group['room'] != null ? 'Room ${group['room']}' : null,
+                    ].where((e) => e != null && e.isNotEmpty).join(' · '),
+                    style: TextStyle(fontSize: 12, color: t.textLow),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
           ),

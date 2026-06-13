@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/api/api_client.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/ice_page_header.dart';
+import '../../core/theme/ice_tokens.dart';
+import '../widgets/ice_kit.dart';
+import '../widgets/ice_shell.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -14,7 +15,6 @@ class MessagesScreen extends StatefulWidget {
 class _State extends State<MessagesScreen> {
   bool _loading = true;
   bool _notAvailable = false;
-  String? _error;
   List<dynamic> _threads = [];
 
   @override
@@ -27,7 +27,6 @@ class _State extends State<MessagesScreen> {
     setState(() {
       _loading = true;
       _notAvailable = false;
-      _error = null;
     });
     try {
       final res = await ApiClient.instance.dio.get('/messages/');
@@ -42,70 +41,52 @@ class _State extends State<MessagesScreen> {
         _threads = list;
         _loading = false;
       });
-    } catch (e) {
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('404') || msg.contains('not found')) {
-        setState(() {
-          _notAvailable = true;
-          _error = e.toString();
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _notAvailable = true;
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+    } catch (_) {
+      setState(() {
+        _notAvailable = true;
+        _loading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: IceColors.bg,
-      body: RefreshIndicator(
-        onRefresh: _fetch,
-        color: IceColors.navyDeep,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: IcePageHeader(
-                title: 'Messages',
-                subtitle: 'Group conversations',
+    if (_loading) return const PageSkeleton();
+
+    return IcePage(
+      title: 'Messages',
+      subtitle: 'Group conversations',
+      backButton: true,
+      onRefresh: _fetch,
+      children: [
+        if (_notAvailable)
+          IceCard(
+            child: EmptyState(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: 'Messaging unavailable',
+              message: 'Group chat could not be loaded. Pull to retry.',
+            ),
+          )
+        else if (_threads.isEmpty)
+          IceCard(
+            child: EmptyState(
+              icon: Icons.mark_chat_unread_outlined,
+              title: 'No conversations yet',
+              message: 'Messages from your groups will appear here.',
+            ),
+          )
+        else
+          ..._threads.asMap().entries.map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ThreadTile(
+                thread: _threads[e.key] as Map,
+                index: e.key,
+                onTap: () => _openThread(_threads[e.key] as Map),
               ),
             ),
-            if (_loading)
-              const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: IceColors.navyDeep),
-                  ),
-                ),
-              )
-            else if (_notAvailable || _threads.isEmpty)
-              SliverToBoxAdapter(
-                child: _notAvailable
-                    ? _UnavailableState(message: _error)
-                    : const _EmptyState(),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) => _ThreadTile(
-                    thread: _threads[i] as Map,
-                    index: i,
-                    onTap: () => _openThread(_threads[i] as Map),
-                  ),
-                  childCount: _threads.length,
-                ),
-              ),
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -161,37 +142,27 @@ class _ThreadTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     return GestureDetector(
           onTap: onTap,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: IceCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              color: IceColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: IceColors.border),
-            ),
             child: Row(
               children: [
-                // Avatar
                 Container(
                   width: 48,
                   height: 48,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [IceColors.navy, IceColors.navyDeep],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                  decoration: BoxDecoration(
+                    color: t.accent,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     _groupName.isNotEmpty ? _groupName[0].toUpperCase() : 'G',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: t.onAccent,
                     ),
                   ),
                 ),
@@ -210,7 +181,7 @@ class _ThreadTile extends StatelessWidget {
                                 fontWeight: _unread > 0
                                     ? FontWeight.w800
                                     : FontWeight.w600,
-                                color: IceColors.text,
+                                color: t.textHi,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -221,9 +192,7 @@ class _ThreadTile extends StatelessWidget {
                               _time,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: _unread > 0
-                                    ? IceColors.navyDeep
-                                    : IceColors.muted,
+                                color: _unread > 0 ? t.accent : t.textLow,
                                 fontWeight: _unread > 0
                                     ? FontWeight.w700
                                     : FontWeight.w400,
@@ -242,8 +211,8 @@ class _ThreadTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 color: _lastMessage.isEmpty
-                                    ? IceColors.muted
-                                    : IceColors.text.withAlpha(160),
+                                    ? t.textLow
+                                    : t.textMid,
                                 fontWeight: _unread > 0
                                     ? FontWeight.w600
                                     : FontWeight.w400,
@@ -260,15 +229,15 @@ class _ThreadTile extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: IceColors.navyDeep,
+                                color: t.accent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 '$_unread',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                                  color: t.onAccent,
                                 ),
                               ),
                             ),
@@ -342,9 +311,7 @@ class _ChatScreenState extends State<_ChatScreen> {
       });
       _scrollToBottom();
     } catch (_) {
-      setState(() {
-        _loading = false;
-      });
+      setState(() => _loading = false);
     }
   }
 
@@ -363,9 +330,7 @@ class _ChatScreenState extends State<_ChatScreen> {
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty || _sending) return;
-    setState(() {
-      _sending = true;
-    });
+    setState(() => _sending = true);
     _msgCtrl.clear();
     try {
       await ApiClient.instance.dio.post(
@@ -373,44 +338,35 @@ class _ChatScreenState extends State<_ChatScreen> {
         data: {'message': text},
       );
       await _fetch();
-    } catch (_) {
-      setState(() {
-        _sending = false;
-      });
-    }
-    setState(() {
-      _sending = false;
-    });
+    } catch (_) {}
+    if (mounted) setState(() => _sending = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     return Scaffold(
-      backgroundColor: IceColors.bg,
+      backgroundColor: t.bg,
       appBar: AppBar(
-        backgroundColor: IceColors.bg,
+        backgroundColor: t.bg,
         elevation: 0,
-        leading: const BackButton(color: IceColors.text),
+        leading: BackButton(color: t.textHi),
         title: Row(
           children: [
             Container(
               width: 32,
               height: 32,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [IceColors.navy, IceColors.navyDeep],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+              decoration: BoxDecoration(
+                color: t.accent,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
               child: Text(
                 _groupName.isNotEmpty ? _groupName[0].toUpperCase() : 'G',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: t.onAccent,
                 ),
               ),
             ),
@@ -418,10 +374,10 @@ class _ChatScreenState extends State<_ChatScreen> {
             Expanded(
               child: Text(
                 _groupName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: IceColors.text,
+                  color: t.textHi,
                 ),
               ),
             ),
@@ -432,14 +388,14 @@ class _ChatScreenState extends State<_ChatScreen> {
         children: [
           Expanded(
             child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: IceColors.navyDeep),
+                ? Center(
+                    child: CircularProgressIndicator(color: t.accent),
                   )
                 : _messages.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No messages yet.',
-                      style: TextStyle(color: IceColors.muted),
+                      style: TextStyle(color: t.textLow),
                     ),
                   )
                 : ListView.builder(
@@ -456,29 +412,29 @@ class _ChatScreenState extends State<_ChatScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: IceColors.surface,
-                border: Border(top: BorderSide(color: IceColors.border)),
+                color: t.card,
+                border: Border(top: BorderSide(color: t.stroke)),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _msgCtrl,
+                      style: TextStyle(color: t.textHi),
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
+                        hintStyle: TextStyle(color: t.textLow),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: IceColors.border),
+                          borderSide: BorderSide(color: t.stroke),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: IceColors.border),
+                          borderSide: BorderSide(color: t.stroke),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(
-                            color: IceColors.navyDeep,
-                          ),
+                          borderSide: BorderSide(color: t.accent),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -498,20 +454,20 @@ class _ChatScreenState extends State<_ChatScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: _sending ? IceColors.border : IceColors.navyDeep,
+                        color: _sending ? t.stroke : t.accent,
                         shape: BoxShape.circle,
                       ),
                       child: _sending
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
+                          ? Padding(
+                              padding: const EdgeInsets.all(12),
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: t.onAccent,
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.send_rounded,
-                              color: Colors.white,
+                              color: t.onAccent,
                               size: 20,
                             ),
                     ),
@@ -558,24 +514,24 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.ice;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisAlignment: _isSent
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            _isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!_isSent) ...[
             CircleAvatar(
               radius: 14,
-              backgroundColor: IceColors.navyDeep.withAlpha(15),
+              backgroundColor: t.accentSoft,
               child: Text(
                 _senderName.isNotEmpty ? _senderName[0].toUpperCase() : '?',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: IceColors.navyDeep,
+                  color: t.accent,
                 ),
               ),
             ),
@@ -586,16 +542,17 @@ class _MessageBubble extends StatelessWidget {
               maxWidth: MediaQuery.of(context).size.width * 0.72,
             ),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: _isSent ? IceColors.navyDeep : IceColors.surface2,
+                color: _isSent ? t.accent : t.inset,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(_isSent ? 16 : 4),
                   bottomRight: Radius.circular(_isSent ? 4 : 16),
                 ),
-                border: _isSent ? null : Border.all(color: IceColors.border),
+                border: _isSent ? null : Border.all(color: t.stroke),
               ),
               child: Column(
                 crossAxisAlignment: _isSent
@@ -605,10 +562,10 @@ class _MessageBubble extends StatelessWidget {
                   if (!_isSent && _senderName.isNotEmpty) ...[
                     Text(
                       _senderName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: IceColors.navyDeep,
+                        color: t.accent,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -617,7 +574,7 @@ class _MessageBubble extends StatelessWidget {
                     _text,
                     style: TextStyle(
                       fontSize: 14,
-                      color: _isSent ? Colors.white : IceColors.text,
+                      color: _isSent ? t.onAccent : t.textHi,
                     ),
                   ),
                   if (_time.isNotEmpty) ...[
@@ -627,8 +584,8 @@ class _MessageBubble extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         color: _isSent
-                            ? Colors.white.withAlpha(140)
-                            : IceColors.muted,
+                            ? t.onAccent.withValues(alpha: 0.6)
+                            : t.textLow,
                       ),
                     ),
                   ],
@@ -640,73 +597,4 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─── States ───────────────────────────────────────────────────────────────────
-
-class _UnavailableState extends StatelessWidget {
-  final String? message;
-  const _UnavailableState({this.message});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(40),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(
-          Icons.chat_bubble_outline_rounded,
-          size: 56,
-          color: IceColors.muted,
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Messaging unavailable',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: IceColors.text,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          message == null
-              ? 'Group chat could not be loaded. Pull to retry.'
-              : 'Group chat could not be loaded. Pull to retry.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: IceColors.muted),
-        ),
-      ],
-    ),
-  );
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.all(40),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.mark_chat_unread_outlined, size: 48, color: IceColors.muted),
-        SizedBox(height: 16),
-        Text(
-          'No conversations yet',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: IceColors.muted,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'Messages from your groups will appear here.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: IceColors.muted),
-        ),
-      ],
-    ),
-  );
 }

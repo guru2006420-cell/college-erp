@@ -244,8 +244,11 @@ class IceDrawer extends ConsumerWidget {
       item(Icons.event_available_rounded, s('Attendance'), '/staff/attendance'),
       item(Icons.grading_rounded, s('Results'), '/staff/results'),
       item(Icons.assignment_outlined, s('Assignments'), '/staff/assignments'),
+      item(Icons.class_outlined, s('My Classes'), '/staff/classes'),
+      item(Icons.chat_bubble_outline_rounded, s('Messages'), '/staff/messages'),
       item(Icons.event_busy_outlined, s('Leave Requests'), '/staff/leave'),
       item(Icons.forum_outlined, s('Feedback'), '/staff/feedback'),
+      item(Icons.payments_outlined, s('Payments'), '/staff/payments'),
       item(Icons.notifications_none_rounded, s('Notifications'), '/staff/notifications'),
       item(Icons.settings_outlined, s('Settings'), '/staff/settings'),
     ];
