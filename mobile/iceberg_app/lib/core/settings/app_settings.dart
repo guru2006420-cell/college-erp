@@ -18,7 +18,7 @@ class AppSettings {
 
   const AppSettings({
     this.themeMode = ThemeMode.dark,
-    this.accent = 'lime',
+    this.accent = 'ice',
     this.fontSize = 'medium',
     this.language = 'en',
     this.notifications = const {
@@ -29,7 +29,7 @@ class AppSettings {
     },
   });
 
-  Color get accentColor => IceAccents.byName[accent] ?? IceAccents.lime;
+  Color get accentColor => IceAccents.byName[accent] ?? IceAccents.ice;
 
   double get textScale => switch (fontSize) {
     'small' => 0.92,
@@ -71,9 +71,17 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
+    // One-time rebrand: the old default accent was lime. Move anyone still on
+    // it (i.e. who never explicitly picked it) onto the new iceberg-blue brand.
+    var accent = p.getString('ice_accent') ?? 'ice';
+    if (!(p.getBool('ice_rebrand_blue') ?? false)) {
+      if (accent == 'lime') accent = 'ice';
+      await p.setBool('ice_rebrand_blue', true);
+      await p.setString('ice_accent', accent);
+    }
     state = AppSettings(
       themeMode: AppSettings.themeModeFrom(p.getString('ice_theme') ?? 'dark'),
-      accent: p.getString('ice_accent') ?? 'lime',
+      accent: accent,
       fontSize: p.getString('ice_font') ?? 'medium',
       language: p.getString('ice_lang') ?? 'en',
       notifications: {
@@ -106,7 +114,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       final d = res.data as Map<String, dynamic>;
       state = AppSettings(
         themeMode: AppSettings.themeModeFrom(d['theme'] ?? 'system'),
-        accent: d['accent'] ?? 'lime',
+        accent: d['accent'] ?? 'ice',
         fontSize: d['font_size'] ?? 'medium',
         language: d['language'] ?? 'en',
         notifications: {

@@ -218,7 +218,7 @@ class StudentResultFileDownloadView(APIView):
 
 SETTINGS_DEFAULTS = {
     "theme": "system",          # system | light | dark
-    "accent": "lime",           # lime | cyan | pink | purple | blue | orange
+    "accent": "ice",            # ice | cyan | blue | lime | purple | pink | orange
     "font_size": "medium",      # small | medium | large
     "language": "en",           # en | uz | ja
     "notifications": {
@@ -230,7 +230,7 @@ SETTINGS_DEFAULTS = {
 }
 
 _THEME_VALUES = {"system", "light", "dark"}
-_ACCENT_VALUES = {"lime", "cyan", "pink", "purple", "blue", "orange"}
+_ACCENT_VALUES = {"ice", "cyan", "blue", "lime", "purple", "pink", "orange"}
 _FONT_VALUES = {"small", "medium", "large"}
 _LANGUAGE_VALUES = {"en", "uz", "ja"}
 

@@ -1631,7 +1631,7 @@ class StudentMobileApiTests(TestCase):
     def test_settings_defaults_and_patch(self):
         res = self.api.get("/api/v1/student/settings/")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["accent"], "lime")
+        self.assertEqual(res.json()["accent"], "ice")
         self.assertEqual(res.json()["theme"], "system")
         self.assertTrue(res.json()["notifications"]["assignments"])
 

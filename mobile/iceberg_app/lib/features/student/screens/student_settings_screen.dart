@@ -52,8 +52,10 @@ class StudentSettingsScreen extends ConsumerWidget {
         // ── Accent colour ────────────────────────────────────────────────
         section(s('Accent Color')),
         IceCard(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            alignment: WrapAlignment.spaceBetween,
             children: IceAccents.byName.entries.map((e) {
               final selected = settings.accent == e.key;
               return GestureDetector(

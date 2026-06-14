@@ -63,40 +63,40 @@ class IceTokens extends ThemeExtension<IceTokens> {
         .toColor();
   }
 
-  factory IceTokens.dark({Color accent = IceAccents.lime}) => IceTokens(
-    bg: const Color(0xFF071719),
-    card: const Color(0xFF0D2529),
-    cardHi: const Color(0xFF12333A),
-    cardLo: const Color(0xFF0A2024),
-    inset: const Color(0xFF123034),
-    stroke: const Color(0xFF1B3D42),
-    textHi: const Color(0xFFF1FAF8),
-    textMid: const Color(0xFF9FBDBA),
-    textLow: const Color(0xFF5F7F7D),
+  factory IceTokens.dark({Color accent = IceAccents.ice}) => IceTokens(
+    bg: const Color(0xFF071520), // deep glacier navy
+    card: const Color(0xFF0E2233),
+    cardHi: const Color(0xFF143A57), // hero cards — rich iceberg blue
+    cardLo: const Color(0xFF0A1F31),
+    inset: const Color(0xFF122B40),
+    stroke: const Color(0xFF1E3C57),
+    textHi: const Color(0xFFF0F6FC),
+    textMid: const Color(0xFF9FB7D0),
+    textLow: const Color(0xFF607890),
     accent: accent,
     accentInk: accent, // bright accent reads well on the dark surface
-    onAccent: const Color(0xFF13230F),
-    mint: const Color(0xFFB8E0DB),
+    onAccent: const Color(0xFF052033),
+    mint: const Color(0xFFAFD9F2), // icy light blue (wordmark / labels)
     coral: const Color(0xFFF2917F),
     sky: const Color(0xFF93D2EC),
     amber: const Color(0xFFF4C95D),
     isDark: true,
   );
 
-  factory IceTokens.light({Color accent = IceAccents.lime}) => IceTokens(
-    bg: const Color(0xFFEFF5F3), // soft cool off-white
+  factory IceTokens.light({Color accent = IceAccents.ice}) => IceTokens(
+    bg: const Color(0xFFEDF3F9), // soft cool off-white with a blue cast
     card: Colors.white,
-    cardHi: const Color(0xFF0E3A41), // hero cards stay deep teal in light mode
-    cardLo: const Color(0xFF06262C),
-    inset: const Color(0xFFE6EFEC),
-    stroke: const Color(0xFFD2E0DC),
-    textHi: const Color(0xFF06262A), // deeper for stronger contrast
-    textMid: const Color(0xFF4C6A67),
-    textLow: const Color(0xFF819B98),
+    cardHi: const Color(0xFF103A57), // hero cards stay deep iceberg blue
+    cardLo: const Color(0xFF07233A),
+    inset: const Color(0xFFE6EEF7),
+    stroke: const Color(0xFFD2DFEC),
+    textHi: const Color(0xFF06223A), // deeper for stronger contrast
+    textMid: const Color(0xFF4C6480),
+    textLow: const Color(0xFF8195AB),
     accent: accent,
     accentInk: _inkFor(accent), // legible deep variant for text/icons
-    onAccent: const Color(0xFF13230F),
-    mint: const Color(0xFF0C5C66),
+    onAccent: const Color(0xFF052033),
+    mint: const Color(0xFF0E6486),
     coral: const Color(0xFFD64C3D),
     sky: const Color(0xFF2487B5),
     amber: const Color(0xFFC98A12),
@@ -150,19 +150,21 @@ class IceTokens extends ThemeExtension<IceTokens> {
 
 /// Accent palette selectable in Settings → Appearance.
 class IceAccents {
-  static const lime = Color(0xFFCDF163);
+  static const ice = Color(0xFF38BDF0); // brand iceberg blue (default)
   static const cyan = Color(0xFF6FE3D4);
-  static const pink = Color(0xFFF49AC1);
-  static const purple = Color(0xFFC49BF4);
   static const blue = Color(0xFF7FB7F7);
+  static const lime = Color(0xFFCDF163);
+  static const purple = Color(0xFFC49BF4);
+  static const pink = Color(0xFFF49AC1);
   static const orange = Color(0xFFF5B36B);
 
   static const byName = <String, Color>{
-    'lime': lime,
+    'ice': ice,
     'cyan': cyan,
-    'pink': pink,
-    'purple': purple,
     'blue': blue,
+    'lime': lime,
+    'purple': purple,
+    'pink': pink,
     'orange': orange,
   };
 }

@@ -7,9 +7,9 @@ class IceColors {
   static const navy = Color(0xFF06343A); // darkest teal
   static const navyMid = Color(0xFF073B42); // mid teal
   static const navyDeep = Color(0xFF0E6873); // iceberg teal
-  // Accent — lime highlight (use on dark backgrounds only; requires dark text)
-  static const lime = Color(0xFFDFFF2F);
-  static const limeAlt = Color(0xFFC7FF3D);
+  // Accent — iceberg blue highlight (use on dark backgrounds; requires dark text)
+  static const lime = Color(0xFF38BDF0);
+  static const limeAlt = Color(0xFF7FE0FF);
   // Legacy alias so existing `IceColors.cyan` refs keep compiling
   static const cyan = Color(0xFF0E6873); // = navyDeep
   static const cyanGlow = Color(0x290E6873);
