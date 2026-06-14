@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/ice_tokens.dart';
 
@@ -477,7 +476,10 @@ class IceButton extends StatelessWidget {
 }
 
 // ─── Skeleton loaders ────────────────────────────────────────────────────────
-class SkeletonBox extends StatelessWidget {
+/// Pulsing placeholder box. Deliberately avoids the `shimmer` package's
+/// `ShaderMask`, which renders as a solid opaque grey block on iOS Safari /
+/// CanvasKit. A plain colour-tween pulse composites reliably everywhere.
+class SkeletonBox extends StatefulWidget {
   final double height;
   final double? width;
   final double radius;
@@ -489,17 +491,33 @@ class SkeletonBox extends StatelessWidget {
   });
 
   @override
+  State<SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 950),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = context.ice;
-    return Shimmer.fromColors(
-      baseColor: t.card,
-      highlightColor: t.inset,
-      child: Container(
-        height: height,
-        width: width ?? double.infinity,
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => Container(
+        height: widget.height,
+        width: widget.width ?? double.infinity,
         decoration: BoxDecoration(
-          color: t.card,
-          borderRadius: BorderRadius.circular(radius),
+          color: Color.lerp(t.card, t.inset, _c.value),
+          borderRadius: BorderRadius.circular(widget.radius),
         ),
       ),
     );

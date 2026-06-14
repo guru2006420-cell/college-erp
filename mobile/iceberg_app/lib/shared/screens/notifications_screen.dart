@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -238,25 +237,21 @@ class _NotifCard extends StatelessWidget {
 class _Skeleton extends StatelessWidget {
   const _Skeleton();
   @override
-  Widget build(BuildContext context) => Shimmer.fromColors(
-    baseColor: Colors.grey[200]!,
-    highlightColor: Colors.grey[50]!,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          for (int i = 0; i < 6; i++) ...[
-            Container(
-              height: 76,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-              ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      children: [
+        for (int i = 0; i < 6; i++) ...[
+          Container(
+            height: 76,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(18),
             ),
-            const SizedBox(height: 10),
-          ],
+          ),
+          const SizedBox(height: 10),
         ],
-      ),
+      ],
     ),
   );
 }
