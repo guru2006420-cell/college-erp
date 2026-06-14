@@ -205,6 +205,13 @@ class S {
     'Admin broadcasts and system alerts': "Admin xabarlari va tizim ogohlantirishlari",
     'Student invoices for your groups': "Guruhlaringiz uchun toʻlov hisob-fakturalari",
     'Theme, language & more': "Mavzu, til va boshqalar",
+    'Date': 'Sana',
+    'Reason': 'Sabab',
+    'Briefly explain…': "Qisqacha tushuntiring…",
+    'Reply': 'Javob',
+    'Approved': 'Tasdiqlangan',
+    'Rejected': 'Rad etilgan',
+    'Share a suggestion or concern…': "Taklif yoki shikoyatni yozing…",
   };
 
   static const _ja = <String, String>{
@@ -403,6 +410,13 @@ class S {
     'Admin broadcasts and system alerts': '管理者からの通知とシステムアラート',
     'Student invoices for your groups': 'グループの生徒の請求書',
     'Theme, language & more': 'テーマ、言語など',
+    'Date': '日付',
+    'Reason': '理由',
+    'Briefly explain…': '簡単に説明してください…',
+    'Reply': '返信',
+    'Approved': '承認済み',
+    'Rejected': '却下',
+    'Share a suggestion or concern…': '提案や懸念を共有してください…',
   };
 
   /// Translate [key] (the English string doubles as the key).

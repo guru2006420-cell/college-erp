@@ -1810,135 +1810,191 @@ class _StaffLeaveScreenState extends ConsumerState<StaffLeaveScreen> {
     final s = ref.watch(stringsProvider);
     final leaves = ref.watch(leaveProvider);
 
-    return IcePage(
-      title: s('Leave'),
-      subtitle: s('Request time off'),
-      backButton: true,
-      onRefresh: () => ref.refresh(leaveProvider.future),
-      children: [
-        // Date picker
-        GestureDetector(
-          onTap: () async {
-            final now = DateTime.now();
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: _date ?? now,
-              firstDate: now.subtract(const Duration(days: 60)),
-              lastDate: now.add(const Duration(days: 365)),
-            );
-            if (picked != null) setState(() => _date = picked);
-          },
-          child: IceCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today_rounded, size: 16, color: t.textMid),
-                const SizedBox(width: 12),
-                Text(
-                  _date != null
-                      ? DateFormat('MMM d, yyyy').format(_date!)
-                      : 'Select date',
-                  style: TextStyle(
-                    color: _date != null ? t.textHi : t.textLow,
-                    fontWeight: FontWeight.w600,
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        bottom: false,
+        child: IcePage(
+          title: s('Leave'),
+          subtitle: s('Request time off'),
+          backButton: true,
+          onRefresh: () => ref.refresh(leaveProvider.future),
+          children: [
+            // ── Request form ─────────────────────────────────────────────
+            IceCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MicroLabel(s('Date')),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _pickDate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: t.inset,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: t.stroke),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded,
+                              size: 17, color: t.accentInk),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _date != null
+                                  ? DateFormat('EEE, MMM d, yyyy')
+                                      .format(_date!)
+                                  : s('Select date'),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: _date != null ? t.textHi : t.textLow,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.expand_more_rounded,
+                              size: 20, color: t.textMid),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        TextField(
-          controller: _reason,
-          maxLines: 3,
-          style: TextStyle(color: t.textHi),
-          decoration: const InputDecoration(
-            labelText: 'Reason',
-            hintText: 'Briefly explain…',
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        IceButton(
-          s('Submit request'),
-          busy: _busy,
-          onPressed: _submit,
-        ),
-        const SizedBox(height: 22),
-
-        SectionHeader(s('History')),
-
-        leaves.when(
-          loading: () => const SkeletonBox(height: 80),
-          error: (e, _) => ErrorState(
-            error: e,
-            onRetry: () => ref.invalidate(leaveProvider),
-          ),
-          data: (list) {
-            if (list.isEmpty) {
-              return IceCard(
-                child: EmptyState(
-                  icon: Icons.event_busy_outlined,
-                  title: s('No leave requests'),
-                  message: s('Your submitted requests will appear here.'),
-                ),
-              );
-            }
-            return Column(
-              children: [
-                for (var i = 0; i < list.length; i++) ...[
-                  _LeaveCard(leave: list[i] as Map<String, dynamic>),
-                  if (i < list.length - 1) const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                  MicroLabel(s('Reason')),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _reason,
+                    maxLines: 3,
+                    style: TextStyle(color: t.textHi, fontSize: 14.5),
+                    decoration: InputDecoration(
+                      hintText: s('Briefly explain…'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  IceButton(
+                    s('Submit request'),
+                    busy: _busy,
+                    onPressed: _submit,
+                  ),
                 ],
-              ],
-            );
-          },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            SectionHeader(s('History')),
+
+            leaves.when(
+              loading: () => Column(
+                children: const [
+                  SkeletonBox(height: 74),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 74),
+                ],
+              ),
+              error: (e, _) => ErrorState(
+                error: e,
+                onRetry: () => ref.invalidate(leaveProvider),
+              ),
+              data: (list) {
+                if (list.isEmpty) {
+                  return IceCard(
+                    child: EmptyState(
+                      icon: Icons.event_busy_outlined,
+                      title: s('No leave requests'),
+                      message: s('Your submitted requests will appear here.'),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < list.length; i++) ...[
+                      _LeaveCard(leave: list[i] as Map<String, dynamic>),
+                      if (i < list.length - 1) const SizedBox(height: 8),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ],
         ),
-      ],
+      ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date ?? now,
+      firstDate: now.subtract(const Duration(days: 60)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _date = picked);
   }
 }
 
-class _LeaveCard extends StatelessWidget {
+class _LeaveCard extends ConsumerWidget {
   final Map<String, dynamic> leave;
   const _LeaveCard({required this.leave});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final st = leave['status'];
     final (tone, label) = switch (st) {
-      1 => (BadgeTone.accent, 'Approved'),
-      -1 => (BadgeTone.coral, 'Rejected'),
-      _ => (BadgeTone.amber, 'Pending'),
+      1 => (BadgeTone.accent, s('Approved')),
+      -1 => (BadgeTone.coral, s('Rejected')),
+      _ => (BadgeTone.amber, s('Pending')),
     };
+    final message = leave['message']?.toString() ?? '';
     return IceCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: t.inset,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.event_rounded, size: 18, color: t.accentInk),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   fmtDate(leave['date']?.toString()),
                   style: TextStyle(
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: t.textHi,
                   ),
                 ),
-              ),
-              StatusBadge(label, tone: tone),
-            ],
-          ),
-          if ((leave['message']?.toString() ?? '').isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              leave['message'].toString(),
-              style: TextStyle(fontSize: 13, color: t.textMid),
+                if (message.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: t.textMid,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
+          const SizedBox(width: 10),
+          StatusBadge(label, tone: tone),
         ],
       ),
     );
@@ -1994,114 +2050,149 @@ class _StaffFeedbackScreenState extends ConsumerState<StaffFeedbackScreen> {
     final s = ref.watch(stringsProvider);
     final items = ref.watch(feedbackProvider);
 
-    return IcePage(
-      title: s('Feedback'),
-      subtitle: s('Send a note to administration'),
-      backButton: true,
-      onRefresh: () => ref.refresh(feedbackProvider.future),
-      children: [
-        TextField(
-          controller: _text,
-          maxLines: 4,
-          style: TextStyle(color: t.textHi),
-          decoration: const InputDecoration(
-            labelText: 'Your feedback',
-            hintText: 'Share a suggestion or concern…',
-          ),
-        ),
-        const SizedBox(height: 12),
-        IceButton(
-          s('Send feedback'),
-          busy: _busy,
-          onPressed: _submit,
-        ),
-        const SizedBox(height: 22),
-
-        SectionHeader(s('Previous feedback')),
-
-        items.when(
-          loading: () => const SkeletonBox(height: 80),
-          error: (e, _) => ErrorState(
-            error: e,
-            onRetry: () => ref.invalidate(feedbackProvider),
-          ),
-          data: (list) {
-            if (list.isEmpty) {
-              return IceCard(
-                child: EmptyState(
-                  icon: Icons.rate_review_outlined,
-                  title: s('No feedback yet'),
-                  message: s('Your feedback history will appear here.'),
-                ),
-              );
-            }
-            return Column(
-              children: [
-                for (var i = 0; i < list.length; i++) ...[
-                  _FeedbackCard(fb: list[i] as Map<String, dynamic>),
-                  if (i < list.length - 1) const SizedBox(height: 8),
-                ],
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _FeedbackCard extends StatelessWidget {
-  final Map<String, dynamic> fb;
-  const _FeedbackCard({required this.fb});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.ice;
-    final reply = fb['reply']?.toString() ?? '';
-    return IceCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            fb['feedback']?.toString() ?? '',
-            style: TextStyle(fontWeight: FontWeight.w600, color: t.textHi),
-          ),
-          if (reply.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: t.inset,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: t.stroke),
-              ),
-              child: Row(
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        bottom: false,
+        child: IcePage(
+          title: s('Feedback'),
+          subtitle: s('Send a note to administration'),
+          backButton: true,
+          onRefresh: () => ref.refresh(feedbackProvider.future),
+          children: [
+            // ── Compose ──────────────────────────────────────────────────
+            IceCard(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.reply_rounded, size: 16, color: t.accentInk),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      reply,
-                      style: TextStyle(fontSize: 13, color: t.textHi),
+                  MicroLabel(s('Your feedback')),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _text,
+                    maxLines: 4,
+                    style: TextStyle(color: t.textHi, fontSize: 14.5),
+                    decoration: InputDecoration(
+                      hintText: s('Share a suggestion or concern…'),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  IceButton(
+                    s('Send feedback'),
+                    busy: _busy,
+                    onPressed: _submit,
                   ),
                 ],
               ),
             ),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Awaiting reply',
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: t.textLow,
-                  fontStyle: FontStyle.italic,
-                ),
+            const SizedBox(height: 24),
+
+            SectionHeader(s('Previous feedback')),
+
+            items.when(
+              loading: () => Column(
+                children: const [
+                  SkeletonBox(height: 88),
+                  SizedBox(height: 8),
+                  SkeletonBox(height: 88),
+                ],
               ),
+              error: (e, _) => ErrorState(
+                error: e,
+                onRetry: () => ref.invalidate(feedbackProvider),
+              ),
+              data: (list) {
+                if (list.isEmpty) {
+                  return IceCard(
+                    child: EmptyState(
+                      icon: Icons.rate_review_outlined,
+                      title: s('No feedback yet'),
+                      message: s('Your feedback history will appear here.'),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (var i = 0; i < list.length; i++) ...[
+                      _FeedbackCard(fb: list[i] as Map<String, dynamic>),
+                      if (i < list.length - 1) const SizedBox(height: 8),
+                    ],
+                  ],
+                );
+              },
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedbackCard extends ConsumerWidget {
+  final Map<String, dynamic> fb;
+  const _FeedbackCard({required this.fb});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
+    final s = ref.watch(stringsProvider);
+    final reply = fb['reply']?.toString() ?? '';
+    final feedback = fb['feedback']?.toString() ?? '';
+    return IceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            feedback,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: t.textHi,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (reply.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: t.inset,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: t.stroke),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.reply_rounded, size: 15, color: t.accentInk),
+                      const SizedBox(width: 6),
+                      Text(
+                        s('Reply'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: t.accentInk,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    reply,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: t.textHi,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            StatusBadge(s('Awaiting reply'), tone: BadgeTone.amber),
         ],
       ),
     );
