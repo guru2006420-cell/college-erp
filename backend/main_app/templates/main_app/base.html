@@ -406,5 +406,45 @@
       });
     }
     </script>
+
+    {% if request.user.is_authenticated %}
+    <script>
+    // Auto sign-out after 1 hour of inactivity (all roles). Activity in any
+    // open tab resets the shared idle clock via localStorage; the server also
+    // expires the session after the same window as a fallback.
+    (function () {
+      var IDLE_MS = 60 * 60 * 1000;            // 1 hour
+      var KEY = 'iceberg_last_activity';
+      function now() { return Date.now(); }
+      function mark() { try { localStorage.setItem(KEY, String(now())); } catch (e) {} }
+      function last() {
+        var v = 0;
+        try { v = parseInt(localStorage.getItem(KEY) || '0', 10); } catch (e) {}
+        return v || now();
+      }
+      var fired = false;
+      function signOut() {
+        if (fired) return;
+        fired = true;
+        var f = document.createElement('form');
+        f.method = 'POST';
+        f.action = '{% url "user_logout" %}';
+        var t = document.createElement('input');
+        t.type = 'hidden'; t.name = 'csrfmiddlewaretoken'; t.value = '{{ csrf_token }}';
+        f.appendChild(t);
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = 'inactive'; i.value = '1';
+        f.appendChild(i);
+        document.body.appendChild(f);
+        f.submit();
+      }
+      mark();
+      ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(function (ev) {
+        window.addEventListener(ev, mark, { passive: true });
+      });
+      setInterval(function () { if (now() - last() >= IDLE_MS) signOut(); }, 15 * 1000);
+    })();
+    </script>
+    {% endif %}
 </body>
 </html>

@@ -648,6 +648,15 @@
     <h1 class="card-title">Welcome back</h1>
     <p class="card-sub">Sign in to continue</p>
 
+    {% if request.GET.inactive %}
+      <div class="alert alert-info">
+        <svg viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 7a1 1 0 112 0v4a1 1 0 11-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+        </svg>
+        <span>You were signed out due to inactivity. Please sign in again.</span>
+      </div>
+    {% endif %}
+
     {# Render non-field messages (rate-limit, server error, missing both fields) #}
     {% for message in messages %}
       {% if 'id_error' not in message.extra_tags and 'pw_error' not in message.extra_tags %}

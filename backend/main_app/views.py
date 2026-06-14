@@ -247,6 +247,10 @@ def logout_user(request):
 
     if request.user is not None:
         logout(request)
+    # The client-side inactivity timer posts ?inactive=1 so the login page can
+    # explain why the user was signed out.
+    if request.POST.get("inactive") or request.GET.get("inactive"):
+        return redirect(f"{reverse('login_page')}?inactive=1")
     return redirect(reverse("login_page"))
 
 
