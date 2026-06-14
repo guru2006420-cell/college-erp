@@ -53,10 +53,17 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                 backgroundColor: themed.ice.bg,
                 drawer: const IceDrawer(),
                 appBar: const IceHeader(),
-                body: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: widget.navigationShell,
+                body: DefaultTextStyle.merge(
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    decorationColor: Colors.transparent,
+                    decorationThickness: 0,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: widget.navigationShell,
+                    ),
                   ),
                 ),
                 bottomNavigationBar: _StaffBottomNav(
