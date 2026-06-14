@@ -212,6 +212,10 @@ class S {
     'Approved': 'Tasdiqlangan',
     'Rejected': 'Rad etilgan',
     'Share a suggestion or concern…': "Taklif yoki shikoyatni yozing…",
+    'Assignment reminders': 'Vazifa eslatmalari',
+    'Vocabulary reminders': 'Lugʻat eslatmalari',
+    'Payment reminders': "Toʻlov eslatmalari",
+    'Announcement alerts': "E'lon ogohlantirishlari",
   };
 
   static const _ja = <String, String>{
@@ -417,6 +421,10 @@ class S {
     'Approved': '承認済み',
     'Rejected': '却下',
     'Share a suggestion or concern…': '提案や懸念を共有してください…',
+    'Assignment reminders': '課題のリマインダー',
+    'Vocabulary reminders': '単語のリマインダー',
+    'Payment reminders': '支払いのリマインダー',
+    'Announcement alerts': 'お知らせ通知',
   };
 
   /// Translate [key] (the English string doubles as the key).

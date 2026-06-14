@@ -475,6 +475,50 @@ class IceButton extends StatelessWidget {
   }
 }
 
+// ─── IceSwitch ───────────────────────────────────────────────────────────────
+/// Custom on/off toggle built from plain containers. Deliberately avoids the
+/// Material [Switch], whose unstyled track renders as a large opaque grey
+/// block on iOS Safari / CanvasKit.
+class IceSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const IceSwitch({super.key, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 170),
+        curve: Curves.easeOut,
+        width: 46,
+        height: 28,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? t.accent : t.inset,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: value ? t.accent : t.stroke),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 170),
+          curve: Curves.easeOut,
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: value ? t.onAccent : t.textMid,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Skeleton loaders ────────────────────────────────────────────────────────
 /// Pulsing placeholder box. Deliberately avoids the `shimmer` package's
 /// `ShaderMask`, which renders as a solid opaque grey block on iOS Safari /

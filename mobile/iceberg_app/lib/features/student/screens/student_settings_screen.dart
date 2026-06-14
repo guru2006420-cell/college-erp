@@ -128,10 +128,10 @@ class StudentSettingsScreen extends ConsumerWidget {
         // ── Notifications ────────────────────────────────────────────────
         section(s('Notifications')),
         IceCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Column(
             children: [
-              for (final (key, label, icon) in [
+              for (final (i, (key, label, icon)) in [
                 (
                   'assignments',
                   'Assignment reminders',
@@ -144,24 +144,17 @@ class StudentSettingsScreen extends ConsumerWidget {
                   'Announcement alerts',
                   Icons.campaign_outlined,
                 ),
-              ])
-                SwitchListTile(
-                  value: settings.notifications[key] ?? true,
-                  onChanged: (v) => notifier.setNotification(key, v),
-                  contentPadding: EdgeInsets.zero,
-                  activeTrackColor: t.accent,
-                  thumbColor: WidgetStatePropertyAll(
-                    (settings.notifications[key] ?? true)
-                        ? t.onAccent
-                        : t.textMid,
-                  ),
-                  title: Row(
+              ].indexed) ...[
+                if (i > 0) Divider(color: t.stroke, height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Row(
                     children: [
                       Icon(icon, size: 19, color: t.textMid),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          label,
+                          s(label),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -169,9 +162,14 @@ class StudentSettingsScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      IceSwitch(
+                        value: settings.notifications[key] ?? true,
+                        onChanged: (v) => notifier.setNotification(key, v),
+                      ),
                     ],
                   ),
                 ),
+              ],
             ],
           ),
         ),
