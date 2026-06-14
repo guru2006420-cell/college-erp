@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ... import branching
 from ...models import FeedbackStaff, FeedbackStudent, Staff, Student
 from ..permissions import IsAdmin
 from ..serializers import (
@@ -100,6 +101,11 @@ class FeedbackDetailView(APIView):
                 fb = FeedbackStaff.objects.get(pk=pk)
             except FeedbackStaff.DoesNotExist:
                 return Response({"detail": "Feedback not found."}, status=status.HTTP_404_NOT_FOUND)
+            # Branch isolation: a branch admin may only reply to staff in their scope.
+            if not branching.filter_staff_for_user(
+                request.user, Staff.objects.filter(pk=fb.staff_id)
+            ).exists():
+                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
             fb.reply = reply
             fb.save(update_fields=["reply", "updated_at"])
             return Response(AdminStaffFeedbackSerializer(fb).data)
@@ -108,6 +114,11 @@ class FeedbackDetailView(APIView):
                 fb = FeedbackStudent.objects.get(pk=pk)
             except FeedbackStudent.DoesNotExist:
                 return Response({"detail": "Feedback not found."}, status=status.HTTP_404_NOT_FOUND)
+            # Branch isolation: a branch admin may only reply to students in their scope.
+            if not branching.filter_students_for_user(
+                request.user, Student.objects.filter(pk=fb.student_id)
+            ).exists():
+                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
             fb.reply = reply
             fb.save(update_fields=["reply", "updated_at"])
             return Response(AdminStudentFeedbackSerializer(fb).data)
