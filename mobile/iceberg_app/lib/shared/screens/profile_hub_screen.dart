@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/api_providers.dart';
@@ -18,15 +16,16 @@ class ProfileHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final user = ref.watch(authProvider).user;
     final settings = ref.watch(appSettingsProvider);
     final notifications = ref.watch(notificationsProvider);
 
     final roleLabel = user?.isStaff == true
-        ? 'Teacher'
+        ? s('Teacher')
         : user?.isAdmin == true
-            ? 'Administrator'
-            : 'Staff';
+            ? s('Administrator')
+            : s('Staff');
 
     final initials = () {
       final full = '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim();
@@ -37,13 +36,13 @@ class ProfileHubScreen extends ConsumerWidget {
     }();
 
     return IcePage(
-      title: 'Profile',
+      title: s('Profile'),
       onRefresh: () async => ref.invalidate(notificationsProvider),
       children: [
         // ── Avatar + identity ──────────────────────────────────────────────
         Center(
           child: GestureDetector(
-            onTap: () => _pickPhoto(context, ref),
+            onTap: () => context.push('/staff/profile/avatar'),
             child: Stack(
               children: [
                 Container(
@@ -52,24 +51,12 @@ class ProfileHubScreen extends ConsumerWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: t.accent, width: 2.5),
                   ),
-                  child: CircleAvatar(
+                  child: IceUserAvatar(
                     radius: 44,
-                    backgroundColor: t.inset,
-                    backgroundImage: user?.profilePicUrl != null &&
-                            user!.profilePicUrl!.isNotEmpty
-                        ? NetworkImage(user.profilePicUrl!)
-                        : null,
-                    child: user?.profilePicUrl == null ||
-                            user!.profilePicUrl!.isEmpty
-                        ? Text(
-                            initials,
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: t.accent,
-                            ),
-                          )
-                        : null,
+                    photoUrl: user?.profilePicUrl,
+                    emoji: user?.avatar.isNotEmpty == true ? user!.avatar : null,
+                    fallbackText: initials,
+                    bgColor: t.inset,
                   ),
                 ),
                 Positioned(
@@ -82,7 +69,7 @@ class ProfileHubScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: t.bg, width: 2),
                     ),
-                    child: Icon(Icons.photo_camera_outlined,
+                    child: Icon(Icons.edit_rounded,
                         size: 13, color: t.onAccent),
                   ),
                 ),
@@ -126,7 +113,7 @@ class ProfileHubScreen extends ConsumerWidget {
             onPressed: () => _showEditSheet(context, ref, user),
             icon: Icon(Icons.edit_outlined, size: 16, color: t.accent),
             label: Text(
-              'Edit Profile',
+              s('Edit Profile'),
               style: TextStyle(
                   color: t.accent,
                   fontWeight: FontWeight.w700,
@@ -141,8 +128,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.event_busy_outlined,
-              title: 'Leave',
-              subtitle: 'Request time off',
+              title: s('Leave'),
+              subtitle: s('Request time off'),
               onTap: () => context.push('/staff/leave'),
             ),
           ),
@@ -150,8 +137,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.forum_outlined,
-              title: 'Feedback',
-              subtitle: 'Send a report',
+              title: s('Feedback'),
+              subtitle: s('Send a report'),
               onTap: () => context.push('/staff/feedback'),
             ),
           ),
@@ -161,8 +148,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.class_outlined,
-              title: 'My Classes',
-              subtitle: 'Groups you teach',
+              title: s('My Classes'),
+              subtitle: s('Groups you teach'),
               onTap: () => context.push('/staff/classes'),
             ),
           ),
@@ -170,8 +157,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.chat_rounded,
-              title: 'Messages',
-              subtitle: 'Group conversations',
+              title: s('Messages'),
+              subtitle: s('Group conversations'),
               onTap: () => context.push('/staff/messages'),
             ),
           ),
@@ -181,8 +168,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.settings_outlined,
-              title: 'Settings',
-              subtitle: 'Theme, language & more',
+              title: s('Settings'),
+              subtitle: s('Theme, language & more'),
               onTap: () => context.push('/staff/settings'),
             ),
           ),
@@ -190,8 +177,8 @@ class ProfileHubScreen extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               icon: Icons.payments_outlined,
-              title: 'Payments',
-              subtitle: 'Student invoices',
+              title: s('Payments'),
+              subtitle: s('Student invoices'),
               onTap: () => context.push('/staff/payments'),
             ),
           ),
@@ -200,16 +187,16 @@ class ProfileHubScreen extends ConsumerWidget {
 
         // ── Recent notifications ────────────────────────────────────────────
         SectionHeader(
-          'Recent Activity',
-          actionLabel: 'View All',
+          s('Recent Activity'),
+          actionLabel: s('View All'),
           onAction: () => context.push('/staff/notifications'),
         ),
         notifications.maybeWhen(
           data: (list) => list.isEmpty
-              ? const IceCard(
+              ? IceCard(
                   child: EmptyState(
                     icon: Icons.history_rounded,
-                    title: 'No activity yet',
+                    title: s('No activity yet'),
                   ),
                 )
               : Column(
@@ -220,10 +207,10 @@ class ProfileHubScreen extends ConsumerWidget {
                             child: ActionTile(
                               icon: _categoryIcon(n['category']),
                               iconColor: t.mint,
-                              title: _categoryTitle(n['category']),
+                              title: s(_categoryTitle(n['category'])),
                               subtitle: n['message'] ?? '',
                               trailing: n['is_read'] == false
-                                  ? StatusBadge('New', tone: BadgeTone.accent)
+                                  ? StatusBadge(s('New'), tone: BadgeTone.accent)
                                   : null,
                               onTap: () =>
                                   context.push('/staff/notifications'),
@@ -236,13 +223,13 @@ class ProfileHubScreen extends ConsumerWidget {
         const SizedBox(height: 16),
 
         // ── Appearance shortcut ─────────────────────────────────────────────
-        const SectionHeader('Appearance'),
+        SectionHeader(s('Appearance')),
         IceCard(
           padding: const EdgeInsets.all(8),
           child: Column(children: [
             _ThemeRow(
               icon: Icons.contrast_rounded,
-              label: 'System Default',
+              label: s('System Default'),
               selected: settings.themeMode == ThemeMode.system,
               onTap: () => ref
                   .read(appSettingsProvider.notifier)
@@ -250,7 +237,7 @@ class ProfileHubScreen extends ConsumerWidget {
             ),
             _ThemeRow(
               icon: Icons.light_mode_outlined,
-              label: 'Light Mode',
+              label: s('Light Mode'),
               selected: settings.themeMode == ThemeMode.light,
               onTap: () => ref
                   .read(appSettingsProvider.notifier)
@@ -258,7 +245,7 @@ class ProfileHubScreen extends ConsumerWidget {
             ),
             _ThemeRow(
               icon: Icons.dark_mode_outlined,
-              label: 'Dark Mode',
+              label: s('Dark Mode'),
               selected: settings.themeMode == ThemeMode.dark,
               onTap: () => ref
                   .read(appSettingsProvider.notifier)
@@ -270,40 +257,20 @@ class ProfileHubScreen extends ConsumerWidget {
         ActionTile(
           icon: Icons.tune_rounded,
           iconColor: t.accent,
-          title: 'Language, Accent & More',
-          subtitle: 'Full appearance settings',
+          title: s('Language, Accent & More'),
+          subtitle: s('Full appearance settings'),
           onTap: () => context.push('/staff/settings'),
         ),
         const SizedBox(height: 16),
 
         IceButton(
-          'Log out',
+          s('Log out'),
           secondary: true,
           icon: Icons.logout_rounded,
           onPressed: () => ref.read(authProvider.notifier).logout(),
         ),
       ],
     );
-  }
-
-  Future<void> _pickPhoto(BuildContext context, WidgetRef ref) async {
-    try {
-      final picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1200,
-      );
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      final form = FormData.fromMap({
-        'profile_pic': MultipartFile.fromBytes(bytes, filename: picked.name),
-      });
-      final res = await ApiClient.instance.dio.patch('/me/', data: form,
-          options: Options(contentType: 'multipart/form-data'));
-      ref.read(authProvider.notifier).updateUser(
-            IceUser.fromJson(Map<String, dynamic>.from(res.data as Map)),
-          );
-    } catch (_) {}
   }
 
   void _showEditSheet(BuildContext context, WidgetRef ref, IceUser? user) {
@@ -476,8 +443,9 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
+        final s = ref.read(stringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save changes.')),
+          SnackBar(content: Text(s('Could not save changes.'))),
         );
       }
     } finally {
@@ -488,6 +456,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   @override
   Widget build(BuildContext context) {
     final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final bottom =
         MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom;
     return Container(
@@ -505,7 +474,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
               color: t.stroke, borderRadius: BorderRadius.circular(2)),
           ),
         ),
-        Text('Edit Profile',
+        Text(s('Edit Profile'),
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -514,16 +483,16 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
         TextField(
           controller: _first,
           style: TextStyle(color: t.textHi, fontWeight: FontWeight.w600),
-          decoration: const InputDecoration(labelText: 'First Name'),
+          decoration: InputDecoration(labelText: s('First Name')),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _last,
           style: TextStyle(color: t.textHi, fontWeight: FontWeight.w600),
-          decoration: const InputDecoration(labelText: 'Last Name'),
+          decoration: InputDecoration(labelText: s('Last Name')),
         ),
         const SizedBox(height: 20),
-        IceButton('Save Changes', busy: _saving, onPressed: _save),
+        IceButton(s('Save Changes'), busy: _saving, onPressed: _save),
       ]),
     );
   }

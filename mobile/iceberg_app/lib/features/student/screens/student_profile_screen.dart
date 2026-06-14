@@ -61,26 +61,14 @@ class StudentProfileScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: t.accent, width: 2),
               ),
-              child: CircleAvatar(
+              child: IceUserAvatar(
                 radius: 44,
-                backgroundColor: t.inset,
-                backgroundImage: user?.profilePicUrl != null
-                    ? NetworkImage(user!.profilePicUrl!)
-                    : null,
-                child: user?.profilePicUrl == null
-                    ? Text(
-                        user?.avatar.isNotEmpty == true
-                            ? user!.avatar
-                            : (user?.firstName.isNotEmpty == true
-                                  ? user!.firstName[0].toUpperCase()
-                                  : '?'),
-                        style: TextStyle(
-                          fontSize: user?.avatar.isNotEmpty == true ? 38 : 30,
-                          fontWeight: FontWeight.w800,
-                          color: t.accent,
-                        ),
-                      )
-                    : null,
+                photoUrl: user?.profilePicUrl,
+                emoji: user?.avatar.isNotEmpty == true ? user!.avatar : null,
+                fallbackText: user?.firstName.isNotEmpty == true
+                    ? user!.firstName[0].toUpperCase()
+                    : '?',
+                bgColor: t.inset,
               ),
             ),
           ),
@@ -575,26 +563,14 @@ class _StudentEditProfileScreenState
                     shape: BoxShape.circle,
                     border: Border.all(color: t.accent, width: 2),
                   ),
-                  child: CircleAvatar(
+                  child: IceUserAvatar(
                     radius: 40,
-                    backgroundColor: t.inset,
-                    backgroundImage: user?.profilePicUrl != null
-                        ? NetworkImage(user!.profilePicUrl!)
-                        : null,
-                    child: user?.profilePicUrl == null
-                        ? Text(
-                            user?.avatar.isNotEmpty == true
-                                ? user!.avatar
-                                : (user?.firstName.isNotEmpty == true
-                                      ? user!.firstName[0].toUpperCase()
-                                      : '?'),
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              color: t.accent,
-                            ),
-                          )
-                        : null,
+                    photoUrl: user?.profilePicUrl,
+                    emoji: user?.avatar.isNotEmpty == true ? user!.avatar : null,
+                    fallbackText: user?.firstName.isNotEmpty == true
+                        ? user!.firstName[0].toUpperCase()
+                        : '?',
+                    bgColor: t.inset,
                   ),
                 ),
                 Positioned(
@@ -738,6 +714,8 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
         ),
       });
       final res = await ApiClient.instance.dio.patch('/me/', data: form);
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
       ref
           .read(authProvider.notifier)
           .updateUser(IceUser.fromJson(res.data as Map<String, dynamic>));
@@ -756,17 +734,22 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.ice;
+    final s = ref.watch(stringsProvider);
     final user = ref.watch(authProvider).user;
 
-    return IcePage(
-      title: 'Choose Avatar',
-      backButton: true,
-      children: [
-        IceChipTabs(
-          tabs: const ['Emoji', 'Upload'],
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-        ),
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        bottom: false,
+        child: IcePage(
+          title: s('Choose Avatar'),
+          backButton: true,
+          children: [
+            IceChipTabs(
+              tabs: [s('Emoji'), s('Upload')],
+              index: _tab,
+              onChanged: (i) => setState(() => _tab = i),
+            ),
         const SizedBox(height: 20),
         if (_tab == 0) ...[
           GridView.count(
@@ -799,7 +782,7 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
           ),
           const SizedBox(height: 24),
           IceButton(
-            'Save Avatar',
+            s('Save'),
             busy: _busy,
             onPressed: _selected == null ? null : _saveEmoji,
           ),
@@ -814,16 +797,18 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Upload a photo from your gallery',
+                  s('Upload'),
                   style: TextStyle(color: t.textMid, fontSize: 13.5),
                 ),
                 const SizedBox(height: 18),
-                IceButton('Choose Photo', busy: _busy, onPressed: _uploadPhoto),
+                IceButton(s('Choose Photo'), busy: _busy, onPressed: _uploadPhoto),
               ],
             ),
           ),
         ],
-      ],
+          ],
+        ),
+      ),
     );
   }
 }

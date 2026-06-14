@@ -694,6 +694,66 @@ class ErrorState extends StatelessWidget {
   }
 }
 
+// ─── User avatar with photo / emoji / initials fallback ─────────────────────
+class IceUserAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final String? emoji;
+  final String fallbackText;
+  final double radius;
+  final Color? bgColor;
+
+  const IceUserAvatar({
+    super.key,
+    this.photoUrl,
+    this.emoji,
+    required this.fallbackText,
+    this.radius = 22,
+    this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    final bg = bgColor ?? t.accentSoft;
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+
+    Widget fallback() {
+      if (emoji != null && emoji!.isNotEmpty) {
+        return Text(emoji!, style: TextStyle(fontSize: radius * 0.9));
+      }
+      return Text(
+        fallbackText,
+        style: TextStyle(
+          fontSize: radius * 0.65,
+          fontWeight: FontWeight.w800,
+          color: t.accent,
+        ),
+      );
+    }
+
+    if (hasPhoto) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: bg,
+        child: ClipOval(
+          child: Image.network(
+            photoUrl!,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback(),
+          ),
+        ),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: bg,
+      child: fallback(),
+    );
+  }
+}
+
 // ─── Pull-to-refresh wrapper ─────────────────────────────────────────────────
 class IceRefresh extends StatelessWidget {
   final Future<void> Function() onRefresh;

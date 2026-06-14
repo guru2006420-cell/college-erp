@@ -24,24 +24,13 @@ class StaffProfileScreen extends ConsumerWidget {
         Center(
           child: Column(
             children: [
-              CircleAvatar(
+              IceUserAvatar(
                 radius: 48,
-                backgroundColor: t.accentSoft,
-                backgroundImage: user?.profilePicUrl != null
-                    ? NetworkImage(user!.profilePicUrl!)
-                    : null,
-                child: user?.profilePicUrl == null
-                    ? Text(
-                        user?.firstName.isNotEmpty == true
-                            ? user!.firstName[0].toUpperCase()
-                            : 'T',
-                        style: TextStyle(
-                          color: t.accentInk,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      )
-                    : null,
+                photoUrl: user?.profilePicUrl,
+                emoji: user?.avatar.isNotEmpty == true ? user!.avatar : null,
+                fallbackText: user?.firstName.isNotEmpty == true
+                    ? user!.firstName[0].toUpperCase()
+                    : 'T',
               ),
               const SizedBox(height: 12),
               Text(
