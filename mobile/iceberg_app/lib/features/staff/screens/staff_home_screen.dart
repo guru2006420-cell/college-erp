@@ -101,25 +101,24 @@ class _Dashboard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: t.accent.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: t.accent.withValues(alpha: 0.5),
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials,
-                          style: TextStyle(
-                            color: t.accent,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
+                    GestureDetector(
+                      onTap: () => context.go('/staff/profile'),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            width: 2,
                           ),
+                        ),
+                        child: IceUserAvatar(
+                          radius: 24,
+                          photoUrl: user?.profilePicUrl,
+                          emoji: user?.avatar.isNotEmpty == true
+                              ? user!.avatar
+                              : null,
+                          fallbackText: initials,
                         ),
                       ),
                     ),

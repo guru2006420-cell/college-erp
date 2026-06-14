@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/api_providers.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../../core/settings/app_settings.dart';
 import '../../../core/theme/ice_tokens.dart';
 import '../../../shared/widgets/ice_kit.dart';
@@ -38,6 +39,14 @@ class _Dashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
     final s = ref.watch(stringsProvider);
+    final user = ref.watch(authProvider).user;
+
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? s('Good Morning')
+        : hour < 17
+            ? s('Good Afternoon')
+            : s('Good Evening');
 
     final rank = (d['rank'] as num?)?.toInt();
     final tier = (d['tier'] as String?) ?? '';
@@ -63,6 +72,67 @@ class _Dashboard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Greeting + avatar ────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            greeting,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user?.firstName.isNotEmpty == true
+                                ? user!.firstName
+                                : s('Student'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // Prevent the card's tap from firing
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: GestureDetector(
+                        onTap: () => context.go('/student/profile'),
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              width: 2,
+                            ),
+                          ),
+                          child: IceUserAvatar(
+                            radius: 22,
+                            photoUrl: user?.profilePicUrl,
+                            emoji: user?.avatar.isNotEmpty == true
+                                ? user!.avatar
+                                : null,
+                            fallbackText: user?.firstName.isNotEmpty == true
+                                ? user!.firstName[0].toUpperCase()
+                                : 'S',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(Icons.star_rounded, size: 18, color: t.accent),

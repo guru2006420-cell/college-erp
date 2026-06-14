@@ -56,6 +56,27 @@ class IceHeader extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        // Avatar button → taps to role profile
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: GestureDetector(
+            onTap: () {
+              final profilePath =
+                  isStudent ? '/student/profile' : '/staff/profile';
+              context.go(profilePath);
+            },
+            child: IceUserAvatar(
+              radius: 15,
+              photoUrl: user?.profilePicUrl,
+              emoji:
+                  user?.avatar.isNotEmpty == true ? user!.avatar : null,
+              fallbackText: user?.firstName.isNotEmpty == true
+                  ? user!.firstName[0].toUpperCase()
+                  : '?',
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
         Padding(
           padding: const EdgeInsets.only(right: 6),
           child: IconButton(

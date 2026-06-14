@@ -35,6 +35,7 @@ import '../../features/staff/screens/staff_home_screen.dart';
 import '../../features/staff/screens/staff_more_screen.dart';
 import '../../features/staff/screens/staff_placeholder_screens.dart';
 import '../../features/staff/screens/staff_feature_screens.dart';
+import '../../features/staff/screens/staff_profile_screen.dart';
 
 // Shared
 import '../../shared/screens/profile_hub_screen.dart';
@@ -125,7 +126,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ]),
           // 4 · Profile
           StatefulShellBranch(routes: [
-            GoRoute(path: '/staff/profile', builder: (_, __) => const ProfileHubScreen()),
+            GoRoute(
+              path: '/staff/profile',
+              builder: (_, __) => const ProfileHubScreen(),
+              routes: [
+                GoRoute(
+                  path: 'avatar',
+                  builder: (_, __) => const StaffAvatarScreen(),
+                ),
+              ],
+            ),
           ]),
         ],
       ),

@@ -54,7 +54,7 @@ class StudentProfileScreen extends ConsumerWidget {
         // ── Avatar + identity ────────────────────────────────────────────
         Center(
           child: GestureDetector(
-            onTap: () => context.go('/student/profile/avatar'),
+            onTap: () => context.push('/student/profile/avatar'),
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -554,7 +554,7 @@ class _StudentEditProfileScreenState
       children: [
         Center(
           child: GestureDetector(
-            onTap: () => context.go('/student/profile/avatar'),
+            onTap: () => context.push('/student/profile/avatar'),
             child: Stack(
               children: [
                 Container(
@@ -686,7 +686,11 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
       ref
           .read(authProvider.notifier)
           .updateUser(IceUser.fromJson(res.data as Map<String, dynamic>));
-      if (mounted) context.pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Avatar saved')));
+        context.pop();
+      }
     } on DioException {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -719,7 +723,11 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
       ref
           .read(authProvider.notifier)
           .updateUser(IceUser.fromJson(res.data as Map<String, dynamic>));
-      if (mounted) context.pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Avatar saved')));
+        context.pop();
+      }
     } on DioException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
