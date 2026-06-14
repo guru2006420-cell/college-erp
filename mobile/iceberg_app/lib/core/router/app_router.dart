@@ -330,8 +330,6 @@ class _AuthListenable extends ChangeNotifier {
 // ── Splash screen ──────────────────────────────────────────────────────────────
 
 const _kNavy = Color(0xFF050F1A);
-const _kCyan = Color(0xFF00CFFF);
-const _kCyanSoft = Color(0xFF00A8D4);
 
 class _SplashScreen extends StatefulWidget {
   const _SplashScreen();
@@ -427,15 +425,6 @@ class _SplashScreenState extends State<_SplashScreen>
         ),
         child: Stack(
           children: [
-            // Faint mountain wireframe background
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _logoFade,
-                builder: (_, __) => CustomPaint(
-                  painter: _IcebergPainter(opacity: _logoFade.value * 0.18),
-                ),
-              ),
-            ),
             // Main content column
             Center(
               child: Column(
@@ -508,116 +497,12 @@ class _IcebergLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 96,
-          height: 88,
-          child: CustomPaint(painter: _IcebergPainter(opacity: 1.0)),
-        ),
-        const SizedBox(height: 14),
-        const Text(
-          'ICEBERG',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 6,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 3),
-        const Text(
-          'LEARNING CENTER',
-          style: TextStyle(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 3.5,
-            color: _kCyanSoft,
-          ),
-        ),
-      ],
+    return Image.asset(
+      'assets/images/logo.png',
+      width: 180,
+      height: 180,
+      fit: BoxFit.contain,
     );
   }
 }
 
-/// Draws a geometric iceberg / mountain wireframe in cyan lines.
-class _IcebergPainter extends CustomPainter {
-  final double opacity;
-  const _IcebergPainter({required this.opacity});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (opacity <= 0) return;
-
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-
-    final mainPaint = Paint()
-      ..color = _kCyan.withOpacity(opacity)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final dimPaint = Paint()
-      ..color = _kCyan.withOpacity(opacity * 0.45)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    // Peak
-    final apex = Offset(cx, h * 0.04);
-    // Left & right base corners
-    final bl = Offset(w * 0.04, h * 0.92);
-    final br = Offset(w * 0.96, h * 0.92);
-
-    // Outer silhouette
-    final outline = Path()
-      ..moveTo(bl.dx, bl.dy)
-      ..lineTo(apex.dx, apex.dy)
-      ..lineTo(br.dx, br.dy);
-    canvas.drawPath(outline, mainPaint);
-
-    // Inner ridge lines (left face — 2 ribs)
-    for (final f in [0.35, 0.65]) {
-      final mid = Offset(cx * (1 - f) + bl.dx * f, apex.dy * (1 - f) + bl.dy * f);
-      canvas.drawLine(apex, mid, dimPaint);
-    }
-    // Right face ribs
-    for (final f in [0.35, 0.65]) {
-      final mid = Offset(cx * (1 - f) + br.dx * f, apex.dy * (1 - f) + br.dy * f);
-      canvas.drawLine(apex, mid, dimPaint);
-    }
-
-    // Horizontal contour lines
-    for (final level in [0.28, 0.52, 0.74]) {
-      final y = apex.dy + (bl.dy - apex.dy) * level;
-      // x extent matches the silhouette edges at this level
-      final xLeft = bl.dx + (apex.dx - bl.dx) * (1 - level);
-      final xRight = br.dx + (apex.dx - br.dx) * (1 - level);
-      canvas.drawLine(Offset(xLeft, y), Offset(xRight, y), dimPaint);
-    }
-
-    // Waterline — slightly thicker, full width
-    final wlPaint = Paint()
-      ..color = _kCyan.withOpacity(opacity * 0.7)
-      ..strokeWidth = 1.4
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(
-      Offset(bl.dx, h * 0.92),
-      Offset(br.dx, h * 0.92),
-      wlPaint,
-    );
-
-    // Small dot at apex
-    canvas.drawCircle(
-      apex,
-      2.5,
-      Paint()..color = _kCyan.withOpacity(opacity),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_IcebergPainter old) => old.opacity != opacity;
-}
