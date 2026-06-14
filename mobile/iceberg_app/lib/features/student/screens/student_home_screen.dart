@@ -101,6 +101,7 @@ class _Dashboard extends ConsumerWidget {
       onRefresh: () => ref.read(studentDashProvider.notifier).reload(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
+        cacheExtent: 600,
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
           // ── Rank / tier hero ───────────────────────────────────────────

@@ -67,13 +67,18 @@ class IceCard extends StatelessWidget {
       ),
       child: child,
     );
-    if (onTap == null) return body;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(radius),
-        child: body,
+
+    // RepaintBoundary caches each card as a GPU texture so the compositor
+    // can scroll them without repainting shadows/gradients/borders every frame.
+    if (onTap == null) return RepaintBoundary(child: body);
+    return RepaintBoundary(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(radius),
+          child: body,
+        ),
       ),
     );
   }

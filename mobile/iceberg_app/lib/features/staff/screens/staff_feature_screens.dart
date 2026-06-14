@@ -1552,6 +1552,7 @@ class StaffVocabularyDetailScreen extends ConsumerWidget {
             onRefresh: () => ref.refresh(staffVocabDetailProvider(_id).future),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              cacheExtent: 600,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
               children: [
                 Text(

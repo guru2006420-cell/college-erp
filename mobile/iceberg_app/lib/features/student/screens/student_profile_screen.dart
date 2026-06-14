@@ -782,6 +782,7 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
         ),
       ),
       body: ListView(
+        cacheExtent: 600,
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
           // ── Live avatar preview ──────────────────────────────────────────

@@ -379,10 +379,11 @@ class IcePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
-    final user = ref.watch(authProvider).user;
+    final user = ref.watch(authProvider.select((a) => a.user));
     final homeRoute = user?.isStaff == true ? '/staff/home' : '/student/home';
     final list = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      cacheExtent: 600,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
         Row(
