@@ -372,7 +372,7 @@ class _TrendChart extends StatelessWidget {
       final pct = (trend[i]['attendance_pct'] as num?)?.toDouble();
       if (pct != null) spots.add(FlSpot(i.toDouble(), pct));
     }
-    if (spots.isEmpty) {
+    if (spots.length < 2) {
       return Center(
         child: Text(
           'No data yet — your weekly trend will appear here.',
@@ -383,6 +383,7 @@ class _TrendChart extends StatelessWidget {
     }
     return LineChart(
       LineChartData(
+        backgroundColor: Colors.transparent,
         minY: 0,
         maxY: 100,
         gridData: FlGridData(
