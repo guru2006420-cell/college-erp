@@ -125,10 +125,6 @@
     });
 
     // ── Shadow-DOM underline fix ───────────────────────────────────────────
-    // Flutter web's HTML renderer puts all content inside a <flt-glass-pane>
-    // shadow root.  The outer `* { text-decoration: none }` CSS cannot cross
-    // that boundary, so we inject the same rule directly into the shadow root
-    // once Flutter has mounted the element.
     (function () {
       var CSS_ID = 'ib-no-underline';
       var CSS_TEXT = '* { text-decoration: none !important; } a { color: inherit; }';
@@ -143,22 +139,18 @@
       }
 
       function scanForFlutterRoot() {
-        // flt-glass-pane is Flutter's top-level custom element (HTML renderer)
         var panes = document.querySelectorAll('flt-glass-pane');
         panes.forEach(function (p) {
           if (p.shadowRoot) injectIntoShadow(p.shadowRoot);
         });
-        // Also cover the flt-scene / flt-canvas-container shadow roots
         document.querySelectorAll('[id^="flt-"]').forEach(function (el) {
           if (el.shadowRoot) injectIntoShadow(el.shadowRoot);
         });
       }
 
-      // Run immediately, then watch for the element to appear
       scanForFlutterRoot();
       var mo = new MutationObserver(scanForFlutterRoot);
       mo.observe(document.body, { childList: true, subtree: true });
-      // Stop watching after 10 s — Flutter is fully up by then
       setTimeout(function () { mo.disconnect(); }, 10000);
     })();
   </script>
