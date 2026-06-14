@@ -8,6 +8,16 @@ import '../../../core/theme/ice_tokens.dart';
 import '../../../shared/widgets/ice_kit.dart';
 import '../../../shared/widgets/ice_shell.dart';
 
+/// Money fields arrive as either a JSON number (amount_paid / amount_due) or a
+/// DRF decimal **string** ("150000.00") for model DecimalFields (amount /
+/// discount / payment amount). Parse defensively — a raw `as num` cast on a
+/// String throws in release and paints the card as a grey ErrorWidget box.
+num _money(dynamic v) {
+  if (v is num) return v;
+  if (v is String) return num.tryParse(v) ?? 0;
+  return 0;
+}
+
 String _uzs(num v) =>
     '${NumberFormat('#,###').format(v).replaceAll(',', ' ')} soʻm';
 
@@ -44,15 +54,18 @@ class _StudentPaymentsScreenState extends ConsumerState<StudentPaymentsScreen> {
     DateTime? nextDue;
     final payments = <Map<String, dynamic>>[];
     for (final inv in invoices) {
-      totalPaid += (inv['amount_paid'] as num?) ?? 0;
-      final due = (inv['amount_due'] as num?) ?? 0;
+      totalPaid += _money(inv['amount_paid']);
+      final due = _money(inv['amount_due']);
       outstanding += due;
       if (due > 0) {
-        final d = DateTime.tryParse(inv['due_date'] ?? '');
+        final d = DateTime.tryParse(inv['due_date']?.toString() ?? '');
         if (d != null && (nextDue == null || d.isBefore(nextDue))) nextDue = d;
       }
       for (final p in (inv['payments'] as List? ?? [])) {
-        payments.add({...p as Map<String, dynamic>, 'invoice_id': inv['id']});
+        payments.add({
+          ...(p as Map).map((k, v) => MapEntry(k.toString(), v)),
+          'invoice_id': inv['id'],
+        });
       }
     }
     payments.sort(
@@ -238,11 +251,11 @@ class _InvoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.ice;
-    final period = DateTime.tryParse(inv['period'] ?? '');
-    final due = DateTime.tryParse(inv['due_date'] ?? '');
+    final period = DateTime.tryParse(inv['period']?.toString() ?? '');
+    final due = DateTime.tryParse(inv['due_date']?.toString() ?? '');
     final (badge, tone) = _badge;
-    final amount = (inv['amount'] as num?) ?? 0;
-    final amountDue = (inv['amount_due'] as num?) ?? 0;
+    final amount = _money(inv['amount']);
+    final amountDue = _money(inv['amount_due']);
 
     return IceCard(
       padding: const EdgeInsets.all(16),
@@ -325,14 +338,14 @@ class _InvoiceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            _row(context, 'Amount', _uzs((inv['amount'] as num?) ?? 0)),
-            if (((inv['discount'] as num?) ?? 0) > 0)
-              _row(context, 'Discount', '- ${_uzs(inv['discount'])}'),
-            _row(context, 'Paid', _uzs((inv['amount_paid'] as num?) ?? 0)),
+            _row(context, 'Amount', _uzs(_money(inv['amount']))),
+            if (_money(inv['discount']) > 0)
+              _row(context, 'Discount', '- ${_uzs(_money(inv['discount']))}'),
+            _row(context, 'Paid', _uzs(_money(inv['amount_paid']))),
             _row(
               context,
               'Outstanding',
-              _uzs((inv['amount_due'] as num?) ?? 0),
+              _uzs(_money(inv['amount_due'])),
               accent: true,
             ),
             if ((inv['note'] as String?)?.isNotEmpty == true) ...[
@@ -388,7 +401,7 @@ class _PaymentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.ice;
-    final paidOn = DateTime.tryParse(payment['paid_on'] ?? '');
+    final paidOn = DateTime.tryParse(payment['paid_on']?.toString() ?? '');
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -413,7 +426,7 @@ class _PaymentRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _uzs((payment['amount'] as num?) ?? 0),
+                  _uzs(_money(payment['amount'])),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
