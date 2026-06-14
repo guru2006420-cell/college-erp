@@ -123,7 +123,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(path: '/staff/assignments', builder: (_, __) => const StaffAssignmentsScreen()),
           ]),
-          // 4 · Profile
+          // 4 · Profile + services (all shown inside the shell so the bottom nav persists)
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/staff/profile',
@@ -135,24 +135,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ],
             ),
+            GoRoute(path: '/staff/settings',      builder: (_, __) => const StudentSettingsScreen()),
+            GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
+            GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
+            GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
+            GoRoute(path: '/staff/leave',         builder: (_, __) => const StaffLeaveScreen()),
+            GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
+            GoRoute(path: '/staff/more',          builder: (_, __) => const StaffMoreScreen()),
           ]),
         ],
       ),
-      // Staff standalone screens (pushed full-screen; each shows its own back affordance).
+      // Staff standalone screens (full-screen with own Scaffold + back affordance).
       GoRoute(path: '/staff/classes',       builder: (_, __) => const StaffClassesScreen()),
-      GoRoute(path: '/staff/more',          builder: (_, __) => const StaffMoreScreen()),
       GoRoute(path: '/staff/vocabulary',    builder: (_, __) => const StaffVocabularyScreen()),
       GoRoute(
         path: '/staff/vocabulary/:id',
         builder: (_, state) => StaffVocabularyDetailScreen(
             vocabId: state.pathParameters['id']!),
       ),
-      GoRoute(path: '/staff/leave',         builder: (_, __) => const StaffLeaveScreen()),
-      GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
-      GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
-      GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
-      GoRoute(path: '/staff/settings',      builder: (_, __) => const StudentSettingsScreen()),
-      GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
 
       // ── Student shell (5 bottom-nav branches) ────────────────────────────
       StatefulShellRoute.indexedStack(

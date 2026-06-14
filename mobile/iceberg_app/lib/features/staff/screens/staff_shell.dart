@@ -100,7 +100,7 @@ class _StaffBottomNav extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: t.isDark ? const Color(0xFF0A2024) : Colors.white,
+        color: t.card,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         border: Border(top: BorderSide(color: t.stroke)),
         boxShadow: [

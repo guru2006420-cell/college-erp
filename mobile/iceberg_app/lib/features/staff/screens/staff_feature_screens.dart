@@ -84,19 +84,24 @@ class StaffClassesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.ice;
     final groups = ref.watch(staffGroupsProvider);
 
-    return groups.when(
-      loading: () => const PageSkeleton(),
-      error: (e, _) => ErrorState(
-        error: e,
-        onRetry: () => ref.invalidate(staffGroupsProvider),
-      ),
-      data: (list) => IcePage(
-        title: 'My Classes',
-        subtitle: 'Groups you teach',
-        backButton: true,
-        onRefresh: () => ref.refresh(staffGroupsProvider.future),
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        bottom: false,
+        child: groups.when(
+          loading: () => const PageSkeleton(),
+          error: (e, _) => ErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(staffGroupsProvider),
+          ),
+          data: (list) => IcePage(
+            title: 'My Classes',
+            subtitle: 'Groups you teach',
+            backButton: true,
+            onRefresh: () => ref.refresh(staffGroupsProvider.future),
         children: [
           if (list.isEmpty)
             IceCard(
@@ -113,9 +118,11 @@ class StaffClassesScreen extends ConsumerWidget {
                 child: _ClassCard(group: g as Map<String, dynamic>),
               ),
             ),
-        ],
+          ],
+        ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -1810,16 +1817,12 @@ class _StaffLeaveScreenState extends ConsumerState<StaffLeaveScreen> {
     final s = ref.watch(stringsProvider);
     final leaves = ref.watch(leaveProvider);
 
-    return Scaffold(
-      backgroundColor: t.bg,
-      body: SafeArea(
-        bottom: false,
-        child: IcePage(
-          title: s('Leave'),
-          subtitle: s('Request time off'),
-          backButton: true,
-          onRefresh: () => ref.refresh(leaveProvider.future),
-          children: [
+    return IcePage(
+      title: s('Leave'),
+      subtitle: s('Request time off'),
+      backButton: true,
+      onRefresh: () => ref.refresh(leaveProvider.future),
+      children: [
             // ── Request form ─────────────────────────────────────────────
             IceCard(
               child: Column(
@@ -1921,8 +1924,6 @@ class _StaffLeaveScreenState extends ConsumerState<StaffLeaveScreen> {
               },
             ),
           ],
-        ),
-      ),
     );
   }
 
@@ -2050,16 +2051,12 @@ class _StaffFeedbackScreenState extends ConsumerState<StaffFeedbackScreen> {
     final s = ref.watch(stringsProvider);
     final items = ref.watch(feedbackProvider);
 
-    return Scaffold(
-      backgroundColor: t.bg,
-      body: SafeArea(
-        bottom: false,
-        child: IcePage(
-          title: s('Feedback'),
-          subtitle: s('Send a note to administration'),
-          backButton: true,
-          onRefresh: () => ref.refresh(feedbackProvider.future),
-          children: [
+    return IcePage(
+      title: s('Feedback'),
+      subtitle: s('Send a note to administration'),
+      backButton: true,
+      onRefresh: () => ref.refresh(feedbackProvider.future),
+      children: [
             // ── Compose ──────────────────────────────────────────────────
             IceCard(
               child: Column(
@@ -2121,8 +2118,6 @@ class _StaffFeedbackScreenState extends ConsumerState<StaffFeedbackScreen> {
               },
             ),
           ],
-        ),
-      ),
     );
   }
 }

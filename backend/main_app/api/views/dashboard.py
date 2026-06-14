@@ -3,7 +3,8 @@ import datetime
 from django.conf import settings
 from django.core.cache import cache
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, DecimalField, F, Q, Sum
+from django.db.models.functions import Coalesce
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -12,8 +13,8 @@ from rest_framework.views import APIView
 from ... import branching
 from ...models import (
     Assignment, AttendanceReport, Branch, Course, CustomUser, DashboardStory,
-    Enrollment, Group, LeaderboardSeason, LeaderboardSnapshot, Notification,
-    RegistrationLead, Staff, Student, StudentResult, Submission,
+    Enrollment, Group, Invoice, LeaderboardSeason, LeaderboardSnapshot, Notification,
+    Payment, RegistrationLead, Staff, Student, StudentResult, Submission,
     VocabularyDay,
 )
 from ..permissions import IsAdmin
@@ -288,6 +289,25 @@ class StudentDashboardView(APIView):
                     "author_name": s.created_by.get_full_name() if s.created_by else "",
                 })
 
+        # Outstanding balance (sum of unpaid amounts minus payments already made)
+        unpaid_invoices = Invoice.objects.filter(
+            student=student,
+            status__in=[Invoice.STATUS_DUE, Invoice.STATUS_PARTIAL],
+        )
+        gross_due = unpaid_invoices.aggregate(
+            total=Coalesce(
+                Sum(F("amount") - F("discount")),
+                0,
+                output_field=DecimalField(),
+            )
+        )["total"]
+        paid_against = Payment.objects.filter(invoice__in=unpaid_invoices).aggregate(
+            total=Coalesce(Sum("amount"), 0, output_field=DecimalField())
+        )["total"]
+        balance_due = max(0, int(gross_due - paid_against))
+        next_inv = unpaid_invoices.order_by("due_date").first()
+        balance_due_date = next_inv.due_date.isoformat() if next_inv else None
+
         payload = {
             "rank": rank,
             "tier": tier,
@@ -304,6 +324,8 @@ class StudentDashboardView(APIView):
             "stories": stories_out,
             "assignments_preview": assignments_preview,
             "classes": classes,
+            "balance_due": balance_due,
+            "balance_due_date": balance_due_date,
         }
         cache.set(cache_key, payload, settings.DASHBOARD_CACHE_TTL)
         return Response(payload)

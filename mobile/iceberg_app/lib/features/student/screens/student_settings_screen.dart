@@ -81,10 +81,10 @@ class StudentSettingsScreen extends ConsumerWidget {
                         : null,
                   ),
                   child: selected
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_rounded,
                           size: 19,
-                          color: Colors.black87,
+                          color: context.ice.onAccent,
                         )
                       : null,
                 ),
