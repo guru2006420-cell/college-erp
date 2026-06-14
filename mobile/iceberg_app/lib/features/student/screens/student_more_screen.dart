@@ -50,6 +50,7 @@ class StudentMoreScreen extends StatelessWidget {
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              cacheExtent: 600,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: cols,
                 mainAxisSpacing: 12,
@@ -57,8 +58,8 @@ class StudentMoreScreen extends StatelessWidget {
                 childAspectRatio: 1.05,
               ),
               itemCount: _tiles.length,
-              itemBuilder: (context, i) => _MoreTileWidget(_tiles[i], i),
-            ),
+              itemBuilder: (context, i) => _MoreTileWidget(_tiles[i]),
+            ).animate().fadeIn(duration: 220.ms),
           ),
         ],
       ),
@@ -81,8 +82,7 @@ class _MoreTile {
 
 class _MoreTileWidget extends StatelessWidget {
   final _MoreTile tile;
-  final int index;
-  const _MoreTileWidget(this.tile, this.index);
+  const _MoreTileWidget(this.tile);
 
   @override
   Widget build(BuildContext context) {
@@ -128,9 +128,6 @@ class _MoreTileWidget extends StatelessWidget {
           ),
         ),
       ),
-    )
-        .animate(delay: Duration(milliseconds: 40 * index))
-        .fadeIn(duration: 220.ms)
-        .scale(begin: const Offset(0.92, 0.92), duration: 220.ms, curve: Curves.easeOut);
+    );
   }
 }

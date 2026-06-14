@@ -53,15 +53,15 @@ class IceCard extends StatelessWidget {
             ? const [
                 BoxShadow(
                   color: Color(0x40000000), // black @ 25%
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
                 ),
               ]
             : const [
                 BoxShadow(
                   color: Color(0x14104049),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
                 ),
               ],
       ),
@@ -750,6 +750,10 @@ class IceUserAvatar extends StatelessWidget {
     }
 
     if (hasPhoto) {
+      // Decode at physical pixel size so the image cache stores a small
+      // texture rather than the full server resolution.
+      final dpr = MediaQuery.devicePixelRatioOf(context).ceil();
+      final px = (radius * 2 * dpr).ceil();
       return CircleAvatar(
         radius: radius,
         backgroundColor: bg,
@@ -759,6 +763,8 @@ class IceUserAvatar extends StatelessWidget {
             width: radius * 2,
             height: radius * 2,
             fit: BoxFit.cover,
+            cacheWidth: px,
+            cacheHeight: px,
             errorBuilder: (_, __, ___) => fallback(),
           ),
         ),

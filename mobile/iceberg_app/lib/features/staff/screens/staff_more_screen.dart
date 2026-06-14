@@ -15,7 +15,7 @@ class StaffMoreScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
     final s = ref.watch(stringsProvider);
-    final user = ref.watch(authProvider).user;
+    final user = ref.watch(authProvider.select((a) => a.user));
 
     final initials = (() {
       final full =
@@ -90,6 +90,7 @@ class StaffMoreScreen extends ConsumerWidget {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      cacheExtent: 600,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
         // ── Profile hero ──────────────────────────────────────────────
@@ -187,7 +188,6 @@ class StaffMoreScreen extends ConsumerWidget {
             final tile = tiles[i];
             return _MoreTileWidget(
               tile: tile,
-              index: i,
               onTap: () {
                 if (tile.isLogout) {
                   ref.read(authProvider.notifier).logout();
@@ -197,7 +197,7 @@ class StaffMoreScreen extends ConsumerWidget {
               },
             );
           },
-        ),
+        ).animate().fadeIn(duration: 220.ms),
       ],
     );
   }
@@ -221,11 +221,9 @@ class _TileSpec {
 
 class _MoreTileWidget extends StatelessWidget {
   final _TileSpec tile;
-  final int index;
   final VoidCallback onTap;
   const _MoreTileWidget({
     required this.tile,
-    required this.index,
     required this.onTap,
   });
 
@@ -266,13 +264,6 @@ class _MoreTileWidget extends StatelessWidget {
           ),
         ],
       ),
-    )
-        .animate(delay: Duration(milliseconds: 40 * index))
-        .fadeIn(duration: 220.ms)
-        .scale(
-          begin: const Offset(0.92, 0.92),
-          duration: 220.ms,
-          curve: Curves.easeOut,
-        );
+    );
   }
 }
