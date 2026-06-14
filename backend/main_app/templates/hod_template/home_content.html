@@ -79,11 +79,6 @@
       <div class="admin-metric-card__label">{{ card.label }}</div>
       <div class="admin-metric-card__meta">{{ card.trend_label }}</div>
       <div class="admin-progress" aria-hidden="true"><span style="width: {{ card.progress }}%;"></span></div>
-      <div class="admin-spark" aria-hidden="true">
-        {% for bar in card.spark %}
-        <span style="height: {{ bar.height }};"></span>
-        {% endfor %}
-      </div>
     </a>
     {% endfor %}
   </section>
