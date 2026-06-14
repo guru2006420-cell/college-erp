@@ -758,15 +758,19 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
     final t = context.ice;
     final user = ref.watch(authProvider).user;
 
-    return IcePage(
-      title: 'Choose Avatar',
-      backButton: true,
-      children: [
-        IceChipTabs(
-          tabs: const ['Emoji', 'Upload'],
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-        ),
+    return Scaffold(
+      backgroundColor: t.bg,
+      body: SafeArea(
+        bottom: false,
+        child: IcePage(
+          title: 'Choose Avatar',
+          backButton: true,
+          children: [
+            IceChipTabs(
+              tabs: const ['Emoji', 'Upload'],
+              index: _tab,
+              onChanged: (i) => setState(() => _tab = i),
+            ),
         const SizedBox(height: 20),
         if (_tab == 0) ...[
           GridView.count(
@@ -823,7 +827,9 @@ class _StudentAvatarScreenState extends ConsumerState<StudentAvatarScreen> {
             ),
           ),
         ],
-      ],
+          ],
+        ),
+      ),
     );
   }
 }

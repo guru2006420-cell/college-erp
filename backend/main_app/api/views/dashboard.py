@@ -182,11 +182,28 @@ class StudentDashboardView(APIView):
         # Enrollments
         enrollments = Enrollment.objects.filter(
             student=student, is_active=True
-        ).select_related("group__course")
+        ).select_related("group__course", "group__teacher__admin")
         enrolled_count = enrollments.count()
         course_ids = {e.group.course_id for e in enrollments if e.group.course_id}
         total_subjects = len(course_ids) if course_ids else enrolled_count
         enrolled_group_ids = [e.group_id for e in enrollments]
+
+        # Enrolled classes (group schedule cards on the home dashboard)
+        classes = [
+            {
+                "id": e.group_id,
+                "name": e.group.name,
+                "course_name": e.group.course.name if e.group.course_id else "",
+                "room": e.group.room,
+                "schedule": e.group.schedule,
+                "teacher_name": (
+                    e.group.teacher.admin.get_full_name()
+                    if e.group.teacher_id and e.group.teacher.admin_id
+                    else ""
+                ),
+            }
+            for e in enrollments
+        ]
 
         # Results / performance trend (last 8 scores)
         results = StudentResult.objects.filter(student=student).order_by("-id")
@@ -286,6 +303,7 @@ class StudentDashboardView(APIView):
             "notices": notices,
             "stories": stories_out,
             "assignments_preview": assignments_preview,
+            "classes": classes,
         }
         cache.set(cache_key, payload, settings.DASHBOARD_CACHE_TTL)
         return Response(payload)

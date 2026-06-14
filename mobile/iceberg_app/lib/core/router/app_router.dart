@@ -125,7 +125,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ]),
           // 4 · Profile
           StatefulShellBranch(routes: [
-            GoRoute(path: '/staff/profile', builder: (_, __) => const ProfileHubScreen()),
+            GoRoute(
+              path: '/staff/profile',
+              builder: (_, __) => const ProfileHubScreen(),
+              routes: [
+                GoRoute(
+                  path: 'avatar',
+                  builder: (_, __) => const StudentAvatarScreen(),
+                ),
+              ],
+            ),
           ]),
         ],
       ),

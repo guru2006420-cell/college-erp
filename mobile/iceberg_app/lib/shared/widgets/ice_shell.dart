@@ -273,13 +273,15 @@ class IceDrawer extends ConsumerWidget {
                         : null,
                     child: user?.profilePicUrl == null
                         ? Text(
-                            user?.firstName.isNotEmpty == true
-                                ? user!.firstName[0].toUpperCase()
-                                : '?',
+                            user?.avatar.isNotEmpty == true
+                                ? user!.avatar
+                                : (user?.firstName.isNotEmpty == true
+                                    ? user!.firstName[0].toUpperCase()
+                                    : '?'),
                             style: TextStyle(
                               color: t.accent,
                               fontWeight: FontWeight.w800,
-                              fontSize: 18,
+                              fontSize: user?.avatar.isNotEmpty == true ? 22 : 18,
                             ),
                           )
                         : null,

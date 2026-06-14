@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/api_providers.dart';
@@ -43,7 +41,7 @@ class ProfileHubScreen extends ConsumerWidget {
         // ── Avatar + identity ──────────────────────────────────────────────
         Center(
           child: GestureDetector(
-            onTap: () => _pickPhoto(context, ref),
+            onTap: () => context.push('/staff/profile/avatar'),
             child: Stack(
               children: [
                 Container(
@@ -62,9 +60,13 @@ class ProfileHubScreen extends ConsumerWidget {
                     child: user?.profilePicUrl == null ||
                             user!.profilePicUrl!.isEmpty
                         ? Text(
-                            initials,
+                            user?.avatar.isNotEmpty == true
+                                ? user!.avatar
+                                : initials,
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: user?.avatar.isNotEmpty == true
+                                  ? 40
+                                  : 28,
                               fontWeight: FontWeight.w800,
                               color: t.accent,
                             ),
@@ -82,7 +84,7 @@ class ProfileHubScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: t.bg, width: 2),
                     ),
-                    child: Icon(Icons.photo_camera_outlined,
+                    child: Icon(Icons.edit_rounded,
                         size: 13, color: t.onAccent),
                   ),
                 ),
@@ -284,26 +286,6 @@ class ProfileHubScreen extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _pickPhoto(BuildContext context, WidgetRef ref) async {
-    try {
-      final picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1200,
-      );
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      final form = FormData.fromMap({
-        'profile_pic': MultipartFile.fromBytes(bytes, filename: picked.name),
-      });
-      final res = await ApiClient.instance.dio.patch('/me/', data: form,
-          options: Options(contentType: 'multipart/form-data'));
-      ref.read(authProvider.notifier).updateUser(
-            IceUser.fromJson(Map<String, dynamic>.from(res.data as Map)),
-          );
-    } catch (_) {}
   }
 
   void _showEditSheet(BuildContext context, WidgetRef ref, IceUser? user) {

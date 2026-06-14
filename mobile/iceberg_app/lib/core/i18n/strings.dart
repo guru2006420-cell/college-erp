@@ -216,6 +216,7 @@ class S {
     'Vocabulary reminders': 'Lugʻat eslatmalari',
     'Payment reminders': "Toʻlov eslatmalari",
     'Announcement alerts': "E'lon ogohlantirishlari",
+    'Upcoming Lessons': 'Yaqin darslar',
   };
 
   static const _ja = <String, String>{
@@ -425,6 +426,7 @@ class S {
     'Vocabulary reminders': '単語のリマインダー',
     'Payment reminders': '支払いのリマインダー',
     'Announcement alerts': 'お知らせ通知',
+    'Upcoming Lessons': '今後のレッスン',
   };
 
   /// Translate [key] (the English string doubles as the key).

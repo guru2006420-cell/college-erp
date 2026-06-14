@@ -49,6 +49,7 @@ class _Dashboard extends ConsumerWidget {
     final trend = (d['performance_trend'] as List?) ?? [];
     final stories = (d['stories'] as List?) ?? [];
     final assignments = (d['assignments_preview'] as List?) ?? [];
+    final classes = (d['classes'] as List?) ?? [];
 
     return IceRefresh(
       onRefresh: () async => ref.refresh(studentDashProvider.future),
@@ -143,7 +144,24 @@ class _Dashboard extends ConsumerWidget {
               ],
             ),
           ).animate().fadeIn(duration: 350.ms).moveY(begin: 14, end: 0),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
+
+          // ── Upcoming lessons ───────────────────────────────────────────
+          if (classes.isNotEmpty) ...[
+            SectionHeader(s('Upcoming Lessons')),
+            for (var i = 0; i < classes.length && i < 4; i++) ...[
+              _LessonCard(
+                group: classes[i] as Map<String, dynamic>,
+                highlight: i == 0,
+              ).animate().fadeIn(
+                    delay: Duration(milliseconds: 60 + i * 50),
+                    duration: 300.ms,
+                  ),
+              if (i < classes.length - 1 && i < 3)
+                const SizedBox(height: 10),
+            ],
+            const SizedBox(height: 22),
+          ],
 
           // ── Attendance ring ────────────────────────────────────────────
           IceCard(
@@ -706,5 +724,116 @@ class _AssignmentPreview extends StatelessWidget {
     if (diff <= 0) return 'Due Today';
     if (diff == 1) return 'Due Tomorrow';
     return 'In $diff Days';
+  }
+}
+
+// ── Lesson card (Upcoming Lessons on the dashboard) ──────────────────────────
+class _LessonCard extends StatelessWidget {
+  final Map<String, dynamic> group;
+  final bool highlight;
+  const _LessonCard({required this.group, this.highlight = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    final name = group['name']?.toString() ?? 'Class';
+    final course = group['course_name']?.toString() ?? '';
+    final room = group['room']?.toString() ?? '';
+    final schedule = group['schedule']?.toString() ?? '';
+    final meta = [
+      if (course.isNotEmpty) course,
+      if (room.isNotEmpty) 'Room $room',
+    ].join(' · ');
+
+    return IceCard(
+      padding: const EdgeInsets.all(14),
+      color: highlight ? t.accentSoft : null,
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: highlight ? t.accent : t.inset,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(
+              Icons.menu_book_rounded,
+              size: 22,
+              color: highlight ? t.onAccent : t.accentInk,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: t.textHi,
+                        ),
+                      ),
+                    ),
+                    if (highlight)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: t.accent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'NEXT',
+                          style: TextStyle(
+                            color: t.onAccent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12.5, color: t.textMid),
+                  ),
+                ],
+                if (schedule.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule_rounded,
+                          size: 13, color: t.textLow),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          schedule,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: t.textLow),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
