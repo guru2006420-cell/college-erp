@@ -50,18 +50,18 @@ class IceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: t.stroke),
         boxShadow: t.isDark
-            ? [
+            ? const [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
+                  color: Color(0x40000000), // black @ 25%
                   blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  offset: Offset(0, 8),
                 ),
               ]
-            : [
+            : const [
                 BoxShadow(
-                  color: const Color(0x14104049),
+                  color: Color(0x14104049),
                   blurRadius: 16,
-                  offset: const Offset(0, 6),
+                  offset: Offset(0, 6),
                 ),
               ],
       ),

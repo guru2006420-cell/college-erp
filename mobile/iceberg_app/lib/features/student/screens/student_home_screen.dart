@@ -35,14 +35,14 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(const Duration(seconds: 45), (_) {
-      if (mounted) ref.read(studentDashProvider.notifier).reload();
+      if (mounted) ref.read(studentDashProvider.notifier).backgroundRefresh();
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      ref.read(studentDashProvider.notifier).reload();
+      ref.read(studentDashProvider.notifier).backgroundRefresh();
     }
   }
 
@@ -76,7 +76,7 @@ class _Dashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.ice;
     final s = ref.watch(stringsProvider);
-    final user = ref.watch(authProvider).user;
+    final user = ref.watch(authProvider.select((a) => a.user));
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -270,7 +270,8 @@ class _Dashboard extends ConsumerWidget {
                   child: MicroLabel(s('Attendance')),
                 ),
                 const SizedBox(height: 16),
-                ProgressRing(
+                RepaintBoundary(
+                 child: ProgressRing(
                   value: (attendance ?? 0) / 100,
                   size: 150,
                   strokeWidth: 12,
@@ -284,7 +285,7 @@ class _Dashboard extends ConsumerWidget {
                       color: t.textHi,
                     ),
                   ),
-                ),
+                 )),
                 const SizedBox(height: 14),
                 Text(
                   s('Present'),
@@ -424,7 +425,12 @@ class _Dashboard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                SizedBox(height: 150, child: _TrendChart(trend: trend)),
+                RepaintBoundary(
+                  child: ColoredBox(
+                    color: t.card,
+                    child: SizedBox(height: 150, child: _TrendChart(trend: trend)),
+                  ),
+                ),
               ],
             ),
           ).animate().fadeIn(delay: 180.ms, duration: 350.ms),

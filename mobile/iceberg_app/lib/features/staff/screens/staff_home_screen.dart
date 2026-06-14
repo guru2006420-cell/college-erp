@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/api/api_providers.dart';
 import '../../../core/auth/auth_state.dart';
@@ -21,6 +22,9 @@ class StaffHomeScreen extends ConsumerStatefulWidget {
 class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen>
     with WidgetsBindingObserver {
   Timer? _timer;
+  // Cache last good data so background refreshes never flash the skeleton.
+  Map<String, dynamic>? _cachedStats;
+  List<dynamic>? _cachedGroups;
 
   @override
   void initState() {
@@ -54,8 +58,21 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen>
     final stats = ref.watch(staffStatsProvider);
     final groups = ref.watch(staffGroupsProvider);
 
-    if (stats.isLoading && groups.isLoading) return const PageSkeleton();
-    if (stats.hasError) {
+    // Keep a local copy of the last successful fetch so we can show stale
+    // data during background refreshes instead of flashing the skeleton.
+    ref.listen(staffStatsProvider, (_, next) {
+      if (next.valueOrNull != null) _cachedStats = next.valueOrNull;
+    });
+    ref.listen(staffGroupsProvider, (_, next) {
+      if (next.valueOrNull != null) _cachedGroups = next.valueOrNull;
+    });
+
+    // Show skeleton only on the very first load (no cached data yet).
+    final initialLoad = _cachedStats == null && _cachedGroups == null;
+    if (initialLoad && (stats.isLoading || groups.isLoading)) {
+      return const PageSkeleton();
+    }
+    if (stats.hasError && _cachedStats == null) {
       return ErrorState(
         error: stats.error,
         onRetry: () => ref.invalidate(staffStatsProvider),
@@ -63,8 +80,8 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen>
     }
 
     return _Dashboard(
-      stats: stats.valueOrNull ?? {},
-      groups: groups.valueOrNull ?? [],
+      stats: _cachedStats ?? stats.valueOrNull ?? {},
+      groups: _cachedGroups ?? groups.valueOrNull ?? [],
       groupsAsync: groups,
       ref: ref,
     );
@@ -117,12 +134,14 @@ class _Dashboard extends ConsumerWidget {
     final sessionsToday = (stats['sessions_today'] as num?)?.toInt() ?? 0;
     final pendingResults = (stats['pending_results'] as num?)?.toInt() ?? 0;
     final pendingLeaves = (stats['pending_leaves'] as num?)?.toInt() ?? 0;
+    final stories = innerRef.watch(storiesProvider).valueOrNull ?? [];
 
     return IceRefresh(
       onRefresh: () async {
         await Future.wait([
           innerRef.refresh(staffStatsProvider.future),
           innerRef.refresh(staffGroupsProvider.future),
+          innerRef.refresh(storiesProvider.future),
         ]);
       },
       child: ListView(
@@ -246,6 +265,55 @@ class _Dashboard extends ConsumerWidget {
           ).animate().fadeIn(duration: 350.ms).moveY(begin: 14, end: 0),
           const SizedBox(height: 14),
 
+          // ── Today's Schedule (visible on open) ────────────────────────
+          SectionHeader(
+            s("Today's Schedule"),
+            actionLabel: s('View All'),
+            onAction: () => context.push('/staff/classes'),
+          ),
+          groupsAsync.when(
+            loading: () => const SkeletonBox(height: 80),
+            error: (e, _) => ErrorState(
+              error: e,
+              onRetry: () => innerRef.invalidate(staffGroupsProvider),
+            ),
+            data: (list) {
+              if (list.isEmpty) {
+                return IceCard(
+                  child: EmptyState(
+                    icon: Icons.calendar_today_rounded,
+                    title: s('No classes scheduled'),
+                    message: s('Your groups will appear here once assigned.'),
+                  ),
+                );
+              }
+              final times = [
+                '08:00 AM',
+                '10:00 AM',
+                '12:00 PM',
+                '02:00 PM',
+                '04:00 PM',
+              ];
+              return Column(
+                children: [
+                  for (var i = 0; i < list.length; i++) ...[
+                    _ScheduleCard(
+                      group: list[i] as Map<String, dynamic>,
+                      time: times[i % times.length],
+                      isNow: i == 0,
+                      onAttendance: () => context.push('/staff/attendance'),
+                    ).animate().fadeIn(
+                          delay: Duration(milliseconds: 60 + i * 50),
+                          duration: 300.ms,
+                        ),
+                    if (i < list.length - 1) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 22),
+
           // ── Stat row ──────────────────────────────────────────────────
           Row(
             children: [
@@ -269,7 +337,7 @@ class _Dashboard extends ConsumerWidget {
                 ),
               ),
             ],
-          ).animate().fadeIn(delay: 60.ms, duration: 350.ms),
+          ).animate().fadeIn(delay: 100.ms, duration: 350.ms),
           const SizedBox(height: 14),
 
           // ── Quick Actions ─────────────────────────────────────────────
@@ -320,58 +388,25 @@ class _Dashboard extends ConsumerWidget {
                 ],
               ),
             ),
-          ).animate().fadeIn(delay: 100.ms, duration: 350.ms),
+          ).animate().fadeIn(delay: 140.ms, duration: 350.ms),
           const SizedBox(height: 22),
 
-          // ── Today's Groups ────────────────────────────────────────────
-          SectionHeader(
-            s("Today's Schedule"),
-            actionLabel: s('View All'),
-            onAction: () => context.push('/staff/classes'),
-          ),
-          groupsAsync.when(
-            loading: () => const SkeletonBox(height: 80),
-            error: (e, _) => ErrorState(
-              error: e,
-              onRetry: () => innerRef.invalidate(staffGroupsProvider),
+          // ── Campus Pulse ──────────────────────────────────────────────
+          if (stories.isNotEmpty) ...[
+            SectionHeader(s('Campus Pulse')),
+            SizedBox(
+              height: 150,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: stories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) =>
+                    _PulseCard(story: stories[i] as Map<String, dynamic>),
+              ),
             ),
-            data: (list) {
-              if (list.isEmpty) {
-                return IceCard(
-                  child: EmptyState(
-                    icon: Icons.calendar_today_rounded,
-                    title: s('No classes scheduled'),
-                    message: s(
-                        'Your groups will appear here once assigned.'),
-                  ),
-                );
-              }
-              final times = [
-                '08:00 AM',
-                '10:00 AM',
-                '12:00 PM',
-                '02:00 PM',
-                '04:00 PM',
-              ];
-              return Column(
-                children: [
-                  for (var i = 0; i < list.length; i++) ...[
-                    _ScheduleCard(
-                      group: list[i] as Map<String, dynamic>,
-                      time: times[i % times.length],
-                      isNow: i == 0,
-                      onAttendance: () =>
-                          context.push('/staff/attendance'),
-                    ).animate().fadeIn(
-                          delay: Duration(milliseconds: 140 + i * 50),
-                          duration: 300.ms,
-                        ),
-                    if (i < list.length - 1) const SizedBox(height: 10),
-                  ],
-                ],
-              );
-            },
-          ),
+            const SizedBox(height: 22),
+          ],
         ],
       ),
     );

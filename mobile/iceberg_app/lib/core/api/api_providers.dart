@@ -94,7 +94,24 @@ class StudentDashNotifier extends AsyncNotifier<Map<String, dynamic>> {
     });
   }
 
-  /// Force a fresh fetch; show skeleton while loading.
+  /// Silently refresh without showing a skeleton — used by the 45s timer
+  /// and foreground-resume lifecycle so scrolling is never interrupted.
+  Future<void> backgroundRefresh() async {
+    if (_refreshing) return;
+    _refreshing = true;
+    final epoch = ++_epoch;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = await _fetch(prefs);
+      if (_epoch == epoch) state = AsyncData(data);
+    } catch (_) {
+      // Keep stale data visible on network error
+    } finally {
+      _refreshing = false;
+    }
+  }
+
+  /// Force a fresh fetch; shows skeleton while loading (pull-to-refresh only).
   Future<void> reload() async {
     ++_epoch; // Invalidate any in-flight background refresh
     state = const AsyncLoading();
