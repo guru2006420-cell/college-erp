@@ -124,17 +124,6 @@ def admin_home(request):
             return 100 if current else 0
         return round(((current - previous) / previous) * 100)
 
-    def spark_points(values):
-        max_value = max(values) if values else 0
-        if max_value <= 0:
-            return [{"value": value, "height": "20%"} for value in values]
-        return [
-            {"value": value, "height": f"{max(18, round((value / max_value) * 100))}%"}
-            for value in values
-        ]
-
-    spark_dates = [today - timedelta(days=offset) for offset in range(6, -1, -1)]
-
     # Branch-scope every metric: super admin sees everything, branch admin
     # only their assigned branches.
     students_base = branching.filter_students_for_user(user, Student.objects.all())
@@ -195,19 +184,6 @@ def admin_home(request):
         due_date__gte=today,
         due_date__lte=today + timedelta(days=7),
     ).count()
-
-    student_spark = [
-        students_base.filter(admin__created_at__date=day).count() for day in spark_dates
-    ]
-    staff_spark = [
-        staff_base.filter(admin__created_at__date=day).count() for day in spark_dates
-    ]
-    group_spark = [groups_base.filter(created_at__date=day).count() for day in spark_dates]
-    course_spark = [Course.objects.filter(created_at__date=day).count() for day in spark_dates]
-    attendance_spark = [
-        Attendance.objects.filter(group_id__in=group_ids, date=day).count()
-        for day in spark_dates
-    ]
 
     # Attendance chart: per active group
     active_groups = groups_base.select_related("course")
@@ -385,7 +361,6 @@ def admin_home(request):
         created_at__date__gte=previous_week_start,
         created_at__date__lt=week_start,
     ).count()
-    lead_spark = [lead_qs.filter(created_at__date=day).count() for day in spark_dates]
     recent_leads = lead_qs.order_by("-created_at")[:4]
     recent_students = students_base.select_related("admin", "course", "branch").order_by(
         "-admin__created_at"
@@ -473,7 +448,6 @@ def admin_home(request):
             "trend": pct_change(new_students_7, new_students_previous),
             "trend_label": f"{new_students_7} new this week",
             "progress": min(100, max(8, group_fill_pct)),
-            "spark": spark_points(student_spark),
             "tone": "cyan",
         },
         {
@@ -484,7 +458,6 @@ def admin_home(request):
             "trend": pct_change(new_staff_7, new_staff_previous),
             "trend_label": f"{new_staff_7} added this week",
             "progress": min(100, max(8, round((total_staff / max(total_groups, 1)) * 20))),
-            "spark": spark_points(staff_spark),
             "tone": "blue",
         },
         {
@@ -495,7 +468,6 @@ def admin_home(request):
             "trend": pct_change(new_groups_7, new_groups_previous),
             "trend_label": f"{group_fill_pct}% capacity filled",
             "progress": min(100, group_fill_pct),
-            "spark": spark_points(group_spark),
             "tone": "navy",
         },
         {
@@ -506,7 +478,6 @@ def admin_home(request):
             "trend": pct_change(new_courses_7, new_courses_previous),
             "trend_label": f"{new_courses_7} new this week",
             "progress": min(100, max(8, round((active_course_count / max(total_course, 1)) * 100))),
-            "spark": spark_points(course_spark),
             "tone": "blue",
         },
         {
@@ -517,7 +488,6 @@ def admin_home(request):
             "trend": attendance_today_rate,
             "trend_label": f"{today_attendance_present}/{today_attendance_total} present",
             "progress": attendance_today_rate,
-            "spark": spark_points(attendance_spark),
             "tone": "ice",
         },
         {
@@ -528,7 +498,6 @@ def admin_home(request):
             "trend": pct_change(new_leads_7, new_leads_previous),
             "trend_label": f"{new_leads_7} new this week",
             "progress": min(100, max(8, round((new_leads_7 / max(total_leads, 1)) * 100))),
-            "spark": spark_points(lead_spark),
             "tone": "cyan",
         },
     ]
