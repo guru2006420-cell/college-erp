@@ -17,7 +17,7 @@ class AppSettings {
   final Map<String, bool> notifications;
 
   const AppSettings({
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.accent = 'ice',
     this.fontSize = 'medium',
     this.language = 'en',
@@ -86,7 +86,7 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       await p.setString('ice_lang', 'en');
     }
     state = AppSettings(
-      themeMode: AppSettings.themeModeFrom(p.getString('ice_theme') ?? 'dark'),
+      themeMode: AppSettings.themeModeFrom(p.getString('ice_theme') ?? 'light'),
       accent: accent,
       fontSize: p.getString('ice_font') ?? 'medium',
       language: lang,

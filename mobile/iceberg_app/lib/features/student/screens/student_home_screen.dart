@@ -23,7 +23,7 @@ class StudentHomeScreen extends ConsumerWidget {
       loading: () => const PageSkeleton(),
       error: (e, _) => ErrorState(
         error: e,
-        onRetry: () => ref.invalidate(studentDashProvider),
+        onRetry: () => ref.read(studentDashProvider.notifier).reload(),
       ),
       data: (d) => _Dashboard(d: d),
     );
@@ -51,7 +51,7 @@ class _Dashboard extends ConsumerWidget {
     final assignments = (d['assignments_preview'] as List?) ?? [];
 
     return IceRefresh(
-      onRefresh: () async => ref.refresh(studentDashProvider.future),
+      onRefresh: () => ref.read(studentDashProvider.notifier).reload(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
