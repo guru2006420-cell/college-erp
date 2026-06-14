@@ -91,16 +91,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final _api = ApiClient.instance;
 
   Future<void> _init() async {
-    // Prime the in-memory token cache so the very first authenticated request
-    // is reliably signed (web secure-storage reads can be flaky). Everything is
-    // guarded with try/catch + a timeout so a hung or failing secure-storage
-    // read on web can never leave the app stuck on the splash screen.
+    // Run a minimum display timer in parallel with auth loading so the splash
+    // animation always completes (~1.8 s) regardless of how fast storage reads
+    // resolve. Both paths await minDisplay before transitioning.
+    final minDisplay = Future<void>.delayed(
+      const Duration(milliseconds: 1800),
+    );
     try {
       await _api.loadTokens().timeout(const Duration(seconds: 4));
       final cached = await _storage
           .read(key: 'user_json')
           .timeout(const Duration(seconds: 4));
       final token = await _api.accessToken;
+      await minDisplay;
       if (cached != null && token != null) {
         state = AuthState.auth(IceUser.fromJson(jsonDecode(cached)));
         return;
@@ -108,6 +111,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {
       // Fall through to unauthenticated — the user can simply log in again.
     }
+    await minDisplay;
     state = AuthState.unauth();
   }
 
