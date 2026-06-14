@@ -7,6 +7,7 @@ import '../../core/api/api_providers.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/theme/ice_tokens.dart';
+import 'ice_kit.dart';
 
 // ─── Header: hamburger · ICEBERG · bell ─────────────────────────────────────
 class IceHeader extends ConsumerWidget implements PreferredSizeWidget {
@@ -55,6 +56,27 @@ class IceHeader extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        // Avatar button → taps to role profile
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: GestureDetector(
+            onTap: () {
+              final profilePath =
+                  isStudent ? '/student/profile' : '/staff/profile';
+              context.go(profilePath);
+            },
+            child: IceUserAvatar(
+              radius: 15,
+              photoUrl: user?.profilePicUrl,
+              emoji:
+                  user?.avatar.isNotEmpty == true ? user!.avatar : null,
+              fallbackText: user?.firstName.isNotEmpty == true
+                  ? user!.firstName[0].toUpperCase()
+                  : '?',
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
         Padding(
           padding: const EdgeInsets.only(right: 6),
           child: IconButton(
@@ -265,26 +287,13 @@ class IceDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  IceUserAvatar(
                     radius: 22,
-                    backgroundColor: t.accentSoft,
-                    backgroundImage: user?.profilePicUrl != null
-                        ? NetworkImage(user!.profilePicUrl!)
-                        : null,
-                    child: user?.profilePicUrl == null
-                        ? Text(
-                            user?.avatar.isNotEmpty == true
-                                ? user!.avatar
-                                : (user?.firstName.isNotEmpty == true
-                                    ? user!.firstName[0].toUpperCase()
-                                    : '?'),
-                            style: TextStyle(
-                              color: t.accent,
-                              fontWeight: FontWeight.w800,
-                              fontSize: user?.avatar.isNotEmpty == true ? 22 : 18,
-                            ),
-                          )
-                        : null,
+                    photoUrl: user?.profilePicUrl,
+                    emoji: user?.avatar.isNotEmpty == true ? user!.avatar : null,
+                    fallbackText: user?.firstName.isNotEmpty == true
+                        ? user!.firstName[0].toUpperCase()
+                        : '?',
                   ),
                   const SizedBox(width: 12),
                   Expanded(

@@ -35,6 +35,7 @@ import '../../features/staff/screens/staff_home_screen.dart';
 import '../../features/staff/screens/staff_more_screen.dart';
 import '../../features/staff/screens/staff_placeholder_screens.dart';
 import '../../features/staff/screens/staff_feature_screens.dart';
+import '../../features/staff/screens/staff_profile_screen.dart';
 
 // Shared
 import '../../shared/screens/profile_hub_screen.dart';
@@ -123,7 +124,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(path: '/staff/assignments', builder: (_, __) => const StaffAssignmentsScreen()),
           ]),
-          // 4 · Profile + services (all shown inside the shell so the bottom nav persists)
+          // 4 · Profile
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/staff/profile',
@@ -131,28 +132,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               routes: [
                 GoRoute(
                   path: 'avatar',
-                  builder: (_, __) => const StudentAvatarScreen(),
+                  builder: (_, __) => const StaffAvatarScreen(),
                 ),
               ],
             ),
-            GoRoute(path: '/staff/settings',      builder: (_, __) => const StudentSettingsScreen()),
-            GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
-            GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
-            GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
-            GoRoute(path: '/staff/leave',         builder: (_, __) => const StaffLeaveScreen()),
-            GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
-            GoRoute(path: '/staff/more',          builder: (_, __) => const StaffMoreScreen()),
           ]),
         ],
       ),
-      // Staff standalone screens (full-screen with own Scaffold + back affordance).
+      // Staff standalone screens (pushed full-screen; each shows its own back affordance).
       GoRoute(path: '/staff/classes',       builder: (_, __) => const StaffClassesScreen()),
+      GoRoute(path: '/staff/more',          builder: (_, __) => const StaffMoreScreen()),
       GoRoute(path: '/staff/vocabulary',    builder: (_, __) => const StaffVocabularyScreen()),
       GoRoute(
         path: '/staff/vocabulary/:id',
         builder: (_, state) => StaffVocabularyDetailScreen(
             vocabId: state.pathParameters['id']!),
       ),
+      GoRoute(path: '/staff/leave',         builder: (_, __) => const StaffLeaveScreen()),
+      GoRoute(path: '/staff/feedback',      builder: (_, __) => const StaffFeedbackScreen()),
+      GoRoute(path: '/staff/payments',      builder: (_, __) => const StaffPaymentsScreen()),
+      GoRoute(path: '/staff/notifications', builder: (_, __) => const StaffNotificationsScreen()),
+      GoRoute(path: '/staff/settings',      builder: (_, __) => const StudentSettingsScreen()),
+      GoRoute(path: '/staff/messages',      builder: (_, __) => const MessagesScreen()),
 
       // ── Student shell (5 bottom-nav branches) ────────────────────────────
       StatefulShellRoute.indexedStack(
@@ -326,87 +327,297 @@ class _AuthListenable extends ChangeNotifier {
   }
 }
 
-/// Brief in-app splash shown only while auth is resolving. Visually continuous
-/// with the static HTML boot splash (lime "I" mark) and animated with a quick,
-/// smooth scale + fade entrance (~450ms) — no long spinner.
-class _SplashScreen extends StatelessWidget {
+// ── Splash screen ──────────────────────────────────────────────────────────────
+
+const _kNavy = Color(0xFF050F1A);
+const _kCyan = Color(0xFF00CFFF);
+const _kCyanSoft = Color(0xFF00A8D4);
+
+class _SplashScreen extends StatefulWidget {
   const _SplashScreen();
 
-  static const _lime = Color(0xFFDFFF2F);
-  static const _navy = Color(0xFF06343A);
+  @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  // Phase 1: logo (0 → 500 ms)
+  late final Animation<double> _logoFade;
+  late final Animation<double> _logoScale;
+
+  // Phase 2: each of 6 icons gets its own window (450 → 1300 ms, 130 ms apart)
+  late final List<Animation<double>> _iconScales;
+  late final List<Animation<double>> _iconFades;
+
+  // Phase 3: tagline (1250 → 1600 ms)
+  late final Animation<double> _tagFade;
+
+  static const _icons = ['📚', '📅', '📝', '💳', '🏆', '📖'];
+  static const _totalMs = 1800;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: _totalMs),
+    )..forward();
+
+    double t(int ms) => ms / _totalMs;
+
+    _logoFade = CurvedAnimation(
+      parent: _ctrl,
+      curve: Interval(t(0), t(500), curve: Curves.easeOut),
+    );
+    _logoScale = Tween<double>(begin: 0.78, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: Interval(t(0), t(500), curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _iconScales = List.generate(_icons.length, (i) {
+      final start = 450 + i * 130;
+      final end = start + 260;
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(t(start), t(end.clamp(0, _totalMs)),
+              curve: Curves.easeOutBack),
+        ),
+      );
+    });
+    _iconFades = List.generate(_icons.length, (i) {
+      final start = 450 + i * 130;
+      final end = start + 180;
+      return CurvedAnimation(
+        parent: _ctrl,
+        curve: Interval(t(start), t(end.clamp(0, _totalMs)),
+            curve: Curves.easeOut),
+      );
+    });
+
+    _tagFade = CurvedAnimation(
+      parent: _ctrl,
+      curve: Interval(t(1250), t(1600), curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: _navy,
-      body: DecoratedBox(
-        decoration: BoxDecoration(
+    return Scaffold(
+      backgroundColor: _kNavy,
+      body: Container(
+        decoration: const BoxDecoration(
           gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 1.1,
-            colors: [Color(0xFF0E6873), Color(0xFF073B42), _navy],
-            stops: [0.0, 0.45, 1.0],
+            center: Alignment(0, -0.15),
+            radius: 1.2,
+            colors: [Color(0xFF0A1F35), Color(0xFF071629), _kNavy],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
-        child: Center(child: _SplashMark()),
+        child: Stack(
+          children: [
+            // Faint mountain wireframe background
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _logoFade,
+                builder: (_, __) => CustomPaint(
+                  painter: _IcebergPainter(opacity: _logoFade.value * 0.18),
+                ),
+              ),
+            ),
+            // Main content column
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Logo block ──────────────────────────────────────────
+                  AnimatedBuilder(
+                    animation: _ctrl,
+                    builder: (_, __) => Opacity(
+                      opacity: _logoFade.value,
+                      child: Transform.scale(
+                        scale: _logoScale.value,
+                        child: const _IcebergLogo(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  // ── Feature icons ───────────────────────────────────────
+                  SizedBox(
+                    width: 280,
+                    child: AnimatedBuilder(
+                      animation: _ctrl,
+                      builder: (_, __) => Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(
+                          _icons.length,
+                          (i) => Opacity(
+                            opacity: _iconFades[i].value,
+                            child: Transform.scale(
+                              scale: _iconScales[i].value,
+                              child: Text(
+                                _icons[i],
+                                style: const TextStyle(fontSize: 28),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  // ── Tagline ─────────────────────────────────────────────
+                  AnimatedBuilder(
+                    animation: _tagFade,
+                    builder: (_, __) => Opacity(
+                      opacity: _tagFade.value,
+                      child: const Text(
+                        'Learn. Track. Grow.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 2.0,
+                          color: Color(0xFF7DCFE8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SplashMark extends StatelessWidget {
-  const _SplashMark();
+class _IcebergLogo extends StatelessWidget {
+  const _IcebergLogo();
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutCubic,
-      builder: (context, v, child) => Opacity(
-        opacity: v.clamp(0.0, 1.0),
-        child: Transform.scale(scale: 0.86 + 0.14 * v, child: child),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: _SplashScreen._lime,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x4DDFFF2F),
-                  blurRadius: 26,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: const Text(
-              'I',
-              style: TextStyle(
-                fontSize: 32,
-                height: 1,
-                fontWeight: FontWeight.w800,
-                color: _SplashScreen._navy,
-              ),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 96,
+          height: 88,
+          child: CustomPaint(painter: _IcebergPainter(opacity: 1.0)),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'ICEBERG',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 6,
+            color: Colors.white,
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'ICEBERG',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 5,
-              color: Colors.white,
-            ),
+        ),
+        const SizedBox(height: 3),
+        const Text(
+          'LEARNING CENTER',
+          style: TextStyle(
+            fontSize: 8.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 3.5,
+            color: _kCyanSoft,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
+
+/// Draws a geometric iceberg / mountain wireframe in cyan lines.
+class _IcebergPainter extends CustomPainter {
+  final double opacity;
+  const _IcebergPainter({required this.opacity});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0) return;
+
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+
+    final mainPaint = Paint()
+      ..color = _kCyan.withOpacity(opacity)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final dimPaint = Paint()
+      ..color = _kCyan.withOpacity(opacity * 0.45)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Peak
+    final apex = Offset(cx, h * 0.04);
+    // Left & right base corners
+    final bl = Offset(w * 0.04, h * 0.92);
+    final br = Offset(w * 0.96, h * 0.92);
+
+    // Outer silhouette
+    final outline = Path()
+      ..moveTo(bl.dx, bl.dy)
+      ..lineTo(apex.dx, apex.dy)
+      ..lineTo(br.dx, br.dy);
+    canvas.drawPath(outline, mainPaint);
+
+    // Inner ridge lines (left face — 2 ribs)
+    for (final f in [0.35, 0.65]) {
+      final mid = Offset(cx * (1 - f) + bl.dx * f, apex.dy * (1 - f) + bl.dy * f);
+      canvas.drawLine(apex, mid, dimPaint);
+    }
+    // Right face ribs
+    for (final f in [0.35, 0.65]) {
+      final mid = Offset(cx * (1 - f) + br.dx * f, apex.dy * (1 - f) + br.dy * f);
+      canvas.drawLine(apex, mid, dimPaint);
+    }
+
+    // Horizontal contour lines
+    for (final level in [0.28, 0.52, 0.74]) {
+      final y = apex.dy + (bl.dy - apex.dy) * level;
+      // x extent matches the silhouette edges at this level
+      final xLeft = bl.dx + (apex.dx - bl.dx) * (1 - level);
+      final xRight = br.dx + (apex.dx - br.dx) * (1 - level);
+      canvas.drawLine(Offset(xLeft, y), Offset(xRight, y), dimPaint);
+    }
+
+    // Waterline — slightly thicker, full width
+    final wlPaint = Paint()
+      ..color = _kCyan.withOpacity(opacity * 0.7)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(
+      Offset(bl.dx, h * 0.92),
+      Offset(br.dx, h * 0.92),
+      wlPaint,
+    );
+
+    // Small dot at apex
+    canvas.drawCircle(
+      apex,
+      2.5,
+      Paint()..color = _kCyan.withOpacity(opacity),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_IcebergPainter old) => old.opacity != opacity;
 }

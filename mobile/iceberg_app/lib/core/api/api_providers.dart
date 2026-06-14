@@ -1,26 +1,122 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'api_client.dart';
 
-// Generic async data fetch helper
+// ── Retry-aware fetch helpers ──────────────────────────────────────────────
+
+bool _isNetworkError(DioException e) =>
+    e.type == DioExceptionType.connectionError ||
+    e.type == DioExceptionType.connectionTimeout ||
+    e.type == DioExceptionType.sendTimeout ||
+    e.type == DioExceptionType.receiveTimeout;
+
 Future<Map<String, dynamic>> apiGet(String path) async {
-  final res = await ApiClient.instance.dio.get(path);
-  return res.data as Map<String, dynamic>;
+  const attempts = 3;
+  const delays = [1, 2]; // seconds between retries
+  for (var i = 0; i < attempts; i++) {
+    try {
+      final res = await ApiClient.instance.dio.get(path);
+      return res.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (!_isNetworkError(e) || i == attempts - 1) rethrow;
+      await Future.delayed(Duration(seconds: delays[i]));
+    }
+  }
+  throw Exception('unreachable');
 }
 
 Future<List<dynamic>> apiGetList(String path) async {
-  final res = await ApiClient.instance.dio.get(path);
-  final data = res.data;
-  if (data is List) return data;
-  if (data is Map && data.containsKey('results')) {
-    return data['results'] as List;
+  const attempts = 3;
+  const delays = [1, 2];
+  for (var i = 0; i < attempts; i++) {
+    try {
+      final res = await ApiClient.instance.dio.get(path);
+      final data = res.data;
+      if (data is List) return data;
+      if (data is Map && data.containsKey('results')) {
+        return data['results'] as List;
+      }
+      return [];
+    } on DioException catch (e) {
+      if (!_isNetworkError(e) || i == attempts - 1) rethrow;
+      await Future.delayed(Duration(seconds: delays[i]));
+    }
   }
   return [];
 }
 
-// Student dashboard
-final studentDashProvider = FutureProvider<Map<String, dynamic>>(
-  (_) => apiGet('/student/home/'),
-);
+// ── Student dashboard — cached AsyncNotifier ───────────────────────────────
+// Shows the last successful response from SharedPreferences immediately on
+// launch, then refreshes in the background so the screen is never blank.
+
+class StudentDashNotifier extends AsyncNotifier<Map<String, dynamic>> {
+  static const _cacheKey = 'cache_student_dash';
+  bool _refreshing = false;
+  // Incremented each time build() runs so stale background refreshes are
+  // ignored after an explicit reload() or invalidation.
+  int _epoch = 0;
+
+  @override
+  Future<Map<String, dynamic>> build() async {
+    final epoch = ++_epoch;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_cacheKey);
+    if (raw != null) {
+      _scheduleBackgroundRefresh(prefs, epoch);
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    }
+    return _fetch(prefs);
+  }
+
+  Future<Map<String, dynamic>> _fetch(SharedPreferences prefs) async {
+    final data = await apiGet('/student/home/');
+    prefs.setString(_cacheKey, jsonEncode(data));
+    return data;
+  }
+
+  void _scheduleBackgroundRefresh(SharedPreferences prefs, int epoch) {
+    if (_refreshing) return;
+    _refreshing = true;
+    Future.microtask(() async {
+      try {
+        final data = await _fetch(prefs);
+        // Only update if no newer build/reload has run
+        if (_epoch == epoch) state = AsyncData(data);
+      } catch (_) {
+        // Silently keep showing cached data on error
+      } finally {
+        _refreshing = false;
+      }
+    });
+  }
+
+  /// Force a fresh fetch; show skeleton while loading.
+  Future<void> reload() async {
+    ++_epoch; // Invalidate any in-flight background refresh
+    state = const AsyncLoading();
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      state = AsyncData(await _fetch(prefs));
+    } catch (e, st) {
+      // Fall back to cached data rather than showing an error screen
+      final raw = prefs.getString(_cacheKey);
+      if (raw != null) {
+        state = AsyncData(Map<String, dynamic>.from(jsonDecode(raw) as Map));
+      } else {
+        state = AsyncError(e, st);
+      }
+    }
+  }
+}
+
+final studentDashProvider =
+    AsyncNotifierProvider<StudentDashNotifier, Map<String, dynamic>>(
+      StudentDashNotifier.new,
+    );
 
 // Student attendance
 final studentAttendanceProvider = FutureProvider<Map<String, dynamic>>(

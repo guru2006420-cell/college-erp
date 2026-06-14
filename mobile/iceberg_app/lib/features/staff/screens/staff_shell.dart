@@ -15,13 +15,52 @@ class StaffShell extends ConsumerStatefulWidget {
   ConsumerState<StaffShell> createState() => _StaffShellState();
 }
 
-class _StaffShellState extends ConsumerState<StaffShell> {
+class _StaffShellState extends ConsumerState<StaffShell>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
+
   @override
   void initState() {
     super.initState();
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 140),
+      value: 1.0,
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     Future.microtask(
       () => ref.read(appSettingsProvider.notifier).syncFromServer(),
     );
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onTabTap(int i) {
+    final isSameTab = i == widget.navigationShell.currentIndex;
+    if (isSameTab) {
+      widget.navigationShell.goBranch(i, initialLocation: true);
+      return;
+    }
+    _fadeCtrl
+        .animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 60),
+          curve: Curves.easeIn,
+        )
+        .then((_) {
+      if (!mounted) return;
+      widget.navigationShell.goBranch(i);
+      _fadeCtrl.animateTo(
+        1.0,
+        duration: const Duration(milliseconds: 130),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
@@ -59,19 +98,19 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                     decorationColor: Colors.transparent,
                     decorationThickness: 0,
                   ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 720),
-                      child: widget.navigationShell,
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 720),
+                        child: widget.navigationShell,
+                      ),
                     ),
                   ),
                 ),
                 bottomNavigationBar: _StaffBottomNav(
                   index: widget.navigationShell.currentIndex,
-                  onTap: (i) => widget.navigationShell.goBranch(
-                    i,
-                    initialLocation: i == widget.navigationShell.currentIndex,
-                  ),
+                  onTap: _onTabTap,
                 ),
               ),
             ),

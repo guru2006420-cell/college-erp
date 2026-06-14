@@ -13,11 +13,11 @@ class AppSettings {
   final ThemeMode themeMode;
   final String accent; // key into IceAccents.byName
   final String fontSize; // small | medium | large
-  final String language; // en | uz | ja
+  final String language; // en | uz | ru | ko
   final Map<String, bool> notifications;
 
   const AppSettings({
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.accent = 'ice',
     this.fontSize = 'medium',
     this.language = 'en',
@@ -79,11 +79,17 @@ class AppSettingsNotifier extends StateNotifier<AppSettings> {
       await p.setBool('ice_rebrand_blue', true);
       await p.setString('ice_accent', accent);
     }
+    // Migrate: Japanese removed in this version — reset to English.
+    var lang = p.getString('ice_lang') ?? 'en';
+    if (lang == 'ja') {
+      lang = 'en';
+      await p.setString('ice_lang', 'en');
+    }
     state = AppSettings(
-      themeMode: AppSettings.themeModeFrom(p.getString('ice_theme') ?? 'dark'),
+      themeMode: AppSettings.themeModeFrom(p.getString('ice_theme') ?? 'light'),
       accent: accent,
       fontSize: p.getString('ice_font') ?? 'medium',
-      language: p.getString('ice_lang') ?? 'en',
+      language: lang,
       notifications: {
         for (final k in const [
           'assignments',

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -20,6 +22,11 @@ class ApiClient {
   String? _access;
   String? _refresh;
 
+  // Completer that resolves once loadTokens() has run.  Any request fired
+  // before tokens finish loading will wait here instead of going out
+  // unauthenticated and getting an unnecessary 401.
+  final _tokensLoaded = Completer<void>();
+
   // Invoked when a 401 cannot be refreshed (refresh token expired/blacklisted)
   // so the app can drop to the login screen instead of looping on errors.
   void Function()? onSessionExpired;
@@ -30,8 +37,8 @@ class ApiClient {
     final d = Dio(
       BaseOptions(
         baseUrl: kBaseUrl,
-        connectTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 20),
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -42,7 +49,15 @@ class ApiClient {
     d.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = _access ??= await _storage.read(key: 'access_token');
+          // Wait for token loading to complete before attaching auth header.
+          // Timeout prevents hanging forever if loadTokens() was never called.
+          if (!_tokensLoaded.isCompleted) {
+            await _tokensLoaded.future.timeout(
+              const Duration(seconds: 6),
+              onTimeout: () {},
+            );
+          }
+          final token = _access;
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -107,9 +122,14 @@ class ApiClient {
   }
 
   /// Populate the in-memory cache from storage at app startup.
+  /// Always completes _tokensLoaded so waiting requests are unblocked.
   Future<void> loadTokens() async {
-    _access = await _storage.read(key: 'access_token');
-    _refresh = await _storage.read(key: 'refresh_token');
+    try {
+      _access = await _storage.read(key: 'access_token');
+      _refresh = await _storage.read(key: 'refresh_token');
+    } finally {
+      if (!_tokensLoaded.isCompleted) _tokensLoaded.complete();
+    }
   }
 
   Future<void> saveTokens(String access, String refresh) async {

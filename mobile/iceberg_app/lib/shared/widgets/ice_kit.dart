@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/theme/ice_tokens.dart';
+
+/// Resolves a potentially relative media URL to an absolute one using the
+/// configured API base host. Relative paths starting with '/' are common
+/// when Django REST Framework returns media URLs without a domain.
+String? _resolveMediaUrl(String? raw) {
+  if (raw == null || raw.isEmpty) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  final base = Uri.tryParse(kBaseUrl);
+  if (base == null) return raw;
+  return '${base.scheme}://${base.host}$raw';
+}
 
 // ─── IceCard ─────────────────────────────────────────────────────────────────
 /// Rounded dark card with hairline stroke. `hero: true` adds the teal
@@ -690,6 +702,67 @@ class ErrorState extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── User avatar with photo / emoji / initials fallback ─────────────────────
+class IceUserAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final String? emoji;
+  final String fallbackText;
+  final double radius;
+  final Color? bgColor;
+
+  const IceUserAvatar({
+    super.key,
+    this.photoUrl,
+    this.emoji,
+    required this.fallbackText,
+    this.radius = 22,
+    this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    final bg = bgColor ?? t.accentSoft;
+    final resolvedUrl = _resolveMediaUrl(photoUrl);
+    final hasPhoto = resolvedUrl != null && resolvedUrl.isNotEmpty;
+
+    Widget fallback() {
+      if (emoji != null && emoji!.isNotEmpty) {
+        return Text(emoji!, style: TextStyle(fontSize: radius * 0.9));
+      }
+      return Text(
+        fallbackText,
+        style: TextStyle(
+          fontSize: radius * 0.65,
+          fontWeight: FontWeight.w800,
+          color: t.accent,
+        ),
+      );
+    }
+
+    if (hasPhoto) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: bg,
+        child: ClipOval(
+          child: Image.network(
+            resolvedUrl,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback(),
+          ),
+        ),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: bg,
+      child: fallback(),
     );
   }
 }

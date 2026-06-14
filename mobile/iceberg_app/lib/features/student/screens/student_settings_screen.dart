@@ -115,7 +115,8 @@ class StudentSettingsScreen extends ConsumerWidget {
               for (final (code, label) in [
                 ('en', 'English'),
                 ('uz', 'Oʻzbekcha'),
-                ('ja', '日本語'),
+                ('ru', 'Русский'),
+                ('ko', '한국어'),
               ])
                 _OptionRow(
                   icon: Icons.language_rounded,

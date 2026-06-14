@@ -187,19 +187,28 @@ class IceFadeTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(
+    // Incoming page: fade in + rise 4% from below
+    final enter = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInCubic,
     );
+    // Current page dims slightly when a new one is pushed on top
+    final dim = CurvedAnimation(
+      parent: secondaryAnimation,
+      curve: Curves.easeOut,
+    );
     return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.022),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
+      opacity: Tween<double>(begin: 1.0, end: 0.92).animate(dim),
+      child: FadeTransition(
+        opacity: enter,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(enter),
+          child: child,
+        ),
       ),
     );
   }
