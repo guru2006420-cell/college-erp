@@ -5,7 +5,7 @@ from django.views.generic import RedirectView
 from django.views.static import serve
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import settings
-from main_app.flutter_view import flutter_app, deploy_flutter
+from main_app.flutter_view import flutter_app, deploy_flutter, download_apk
 
 urlpatterns = [
     path("", include("main_app.urls")),
@@ -21,6 +21,8 @@ urlpatterns = [
     path("app", RedirectView.as_view(url="/app/", permanent=False)),
     # Deploy webhook — triggers git pull on the VPS (HMAC-protected)
     path("api/deploy/flutter/", deploy_flutter, name="deploy_flutter"),
+    # APK download
+    path("download/app.apk", download_apk, name="download_apk"),
 ]
 
 # Serve uploaded media files (profile pictures, etc.) in all environments.

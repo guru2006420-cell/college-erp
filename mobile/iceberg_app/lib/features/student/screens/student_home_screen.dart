@@ -73,28 +73,52 @@ class _Dashboard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Greeting + avatar ────────────────────────────────────
+                // ── Avatar + greeting row (mirrors teacher header layout) ─
                 Row(
                   children: [
+                    GestureDetector(
+                      onTap: () => context.go('/student/profile'),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            width: 2,
+                          ),
+                        ),
+                        child: IceUserAvatar(
+                          radius: 22,
+                          photoUrl: user?.profilePicUrl,
+                          emoji: user?.avatar.isNotEmpty == true
+                              ? user!.avatar
+                              : null,
+                          fallbackText: user?.firstName.isNotEmpty == true
+                              ? user!.firstName[0].toUpperCase()
+                              : 'S',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            greeting,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.65),
-                            ),
+                          Row(
+                            children: [
+                              Icon(Icons.star_rounded, size: 14, color: t.accent),
+                              const SizedBox(width: 4),
+                              MicroLabel(
+                                tier.isEmpty ? s('My standing') : tier,
+                                color: t.accent,
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            user?.firstName.isNotEmpty == true
-                                ? user!.firstName
-                                : s('Student'),
+                            '$greeting, ${user?.firstName.isNotEmpty == true ? user!.firstName : s('Student')}',
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
@@ -102,69 +126,36 @@ class _Dashboard extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        // Prevent the card's tap from firing
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: GestureDetector(
-                        onTap: () => context.go('/student/profile'),
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              width: 2,
-                            ),
-                          ),
-                          child: IceUserAvatar(
-                            radius: 22,
-                            photoUrl: user?.profilePicUrl,
-                            emoji: user?.avatar.isNotEmpty == true
-                                ? user!.avatar
-                                : null,
-                            fallbackText: user?.firstName.isNotEmpty == true
-                                ? user!.firstName[0].toUpperCase()
-                                : 'S',
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text(
+                        rank != null ? '#$rank' : '—',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.85),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(Icons.star_rounded, size: 18, color: t.accent),
-                    const SizedBox(width: 6),
-                    MicroLabel(
-                      tier.isEmpty ? s('My standing') : tier,
-                      color: t.accent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  rank != null
-                      ? '${s('Rank')} #$rank ${s('Overall')}'
-                      : s('Not ranked yet'),
-                  style: const TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 12,
+                    vertical: 11,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.08),
                     ),
@@ -172,36 +163,35 @@ class _Dashboard extends ConsumerWidget {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
                           color: t.accent.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.local_fire_department_rounded,
-                          size: 18,
+                          size: 16,
                           color: t.accent,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             s('Current Momentum'),
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: Colors.white.withValues(alpha: 0.65),
                             ),
                           ),
-                          const SizedBox(height: 2),
                           Text(
                             streak > 0
                                 ? '$streak-${s('Day Streak')}'
                                 : s('Start your streak today'),
                             style: const TextStyle(
-                              fontSize: 15.5,
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
@@ -461,17 +451,39 @@ class _TrendChart extends StatelessWidget {
       if (pct != null) spots.add(FlSpot(i.toDouble(), pct));
     }
     if (spots.length < 2) {
-      return Center(
-        child: Text(
-          'No data yet — your weekly trend will appear here.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: t.textLow, fontSize: 13),
+      return Container(
+        decoration: BoxDecoration(
+          color: t.inset,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.show_chart_rounded, size: 30, color: t.textLow),
+              const SizedBox(height: 8),
+              Text(
+                'No performance data yet',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: t.textMid,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Your progress will appear here after results are added.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11.5, color: t.textLow),
+              ),
+            ],
+          ),
         ),
       );
     }
     return LineChart(
       LineChartData(
-        backgroundColor: Colors.transparent,
+        backgroundColor: t.card,
         minY: 0,
         maxY: 100,
         gridData: FlGridData(

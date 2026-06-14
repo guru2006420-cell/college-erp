@@ -234,9 +234,14 @@ class _StaffAvatarScreenState extends ConsumerState<StaffAvatarScreen> {
           .updateUser(IceUser.fromJson(res.data as Map<String, dynamic>));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Avatar saved')),
+          const SnackBar(
+            content: Text('Avatar saved ✓'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        context.pop();
+        await Future.delayed(const Duration(milliseconds: 420));
+        if (mounted) context.pop();
       }
     } on DioException {
       if (mounted) {
@@ -272,9 +277,14 @@ class _StaffAvatarScreenState extends ConsumerState<StaffAvatarScreen> {
           .updateUser(IceUser.fromJson(res.data as Map<String, dynamic>));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Avatar saved')),
+          const SnackBar(
+            content: Text('Avatar saved ✓'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        context.pop();
+        await Future.delayed(const Duration(milliseconds: 420));
+        if (mounted) context.pop();
       }
     } on DioException {
       if (mounted) {

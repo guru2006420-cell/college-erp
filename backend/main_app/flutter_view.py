@@ -13,6 +13,10 @@ FLUTTER_DIR = os.environ.get(
     "FLUTTER_WEB_DIR", str(Path(settings.BASE_DIR).parent / "web" / "flutter_web")
 )
 
+DOWNLOADS_DIR = os.environ.get(
+    "DOWNLOADS_DIR", str(Path(settings.BASE_DIR).parent / "web" / "downloads")
+)
+
 
 def flutter_app(request, path="/"):
     # Strip leading slash and default to index.html
@@ -47,6 +51,21 @@ def flutter_app(request, path="/"):
         return response
 
     raise Http404
+
+
+def download_apk(request):
+    """Serve the latest ICEBERG Android APK for direct download."""
+    apk_path = os.path.join(DOWNLOADS_DIR, "iceberg.apk")
+    if not os.path.isfile(apk_path):
+        raise Http404("APK not yet available")
+    response = FileResponse(
+        open(apk_path, "rb"),
+        content_type="application/vnd.android.package-archive",
+        as_attachment=True,
+        filename="ICEBERG.apk",
+    )
+    response["Cache-Control"] = "no-cache"
+    return response
 
 
 # ---------------------------------------------------------------------------
