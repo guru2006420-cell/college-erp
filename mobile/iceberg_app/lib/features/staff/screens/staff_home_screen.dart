@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,15 +11,49 @@ import '../../../core/settings/app_settings.dart';
 import '../../../core/theme/ice_tokens.dart';
 import '../../../shared/widgets/ice_kit.dart';
 
-class StaffHomeScreen extends ConsumerWidget {
+class StaffHomeScreen extends ConsumerStatefulWidget {
   const StaffHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StaffHomeScreen> createState() => _StaffHomeScreenState();
+}
+
+class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen>
+    with WidgetsBindingObserver {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (mounted) {
+        ref.invalidate(staffStatsProvider);
+        ref.invalidate(staffGroupsProvider);
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(staffStatsProvider);
+      ref.invalidate(staffGroupsProvider);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final stats = ref.watch(staffStatsProvider);
     final groups = ref.watch(staffGroupsProvider);
 
-    // Show skeleton only when both are loading
     if (stats.isLoading && groups.isLoading) return const PageSkeleton();
     if (stats.hasError) {
       return ErrorState(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,11 +15,46 @@ import '../../../shared/widgets/ice_kit.dart';
 
 /// Student Dashboard — rank/tier hero, streak, attendance ring, quick stats,
 /// performance trend, Campus Pulse stories and assignment preview.
-class StudentHomeScreen extends ConsumerWidget {
+///
+/// Refreshes automatically:
+///   - every 45 s while the screen is visible (background polling)
+///   - whenever the app returns to the foreground from the background
+class StudentHomeScreen extends ConsumerStatefulWidget {
   const StudentHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentHomeScreen> createState() => _StudentHomeScreenState();
+}
+
+class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen>
+    with WidgetsBindingObserver {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (mounted) ref.read(studentDashProvider.notifier).reload();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.read(studentDashProvider.notifier).reload();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dash = ref.watch(studentDashProvider);
 
     return dash.when(
@@ -451,33 +488,27 @@ class _TrendChart extends StatelessWidget {
       if (pct != null) spots.add(FlSpot(i.toDouble(), pct));
     }
     if (spots.length < 2) {
-      return Container(
-        decoration: BoxDecoration(
-          color: t.inset,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.show_chart_rounded, size: 30, color: t.textLow),
-              const SizedBox(height: 8),
-              Text(
-                'No performance data yet',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: t.textMid,
-                ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.show_chart_rounded, size: 30, color: t.textLow),
+            const SizedBox(height: 8),
+            Text(
+              'No performance data yet',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: t.textMid,
               ),
-              const SizedBox(height: 3),
-              Text(
-                'Your progress will appear here after results are added.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11.5, color: t.textLow),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'Progress will appear here after results are added.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, color: t.textLow),
+            ),
+          ],
         ),
       );
     }

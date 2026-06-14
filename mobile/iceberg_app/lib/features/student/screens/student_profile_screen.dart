@@ -223,7 +223,7 @@ class StudentProfileScreen extends ConsumerWidget {
                 icon: Icons.settings_outlined,
                 title: s('Settings'),
                 subtitle: 'App preferences',
-                onTap: () => context.go('/student/settings'),
+                onTap: () => context.push('/student/settings'),
               ),
             ),
           ],
