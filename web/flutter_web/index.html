@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/">
+  <base href="/app/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -45,7 +45,7 @@
                  floaty 4.2s ease-in-out 1s infinite,
                  glow 3s ease-in-out .7s infinite;
     }
-    #boot .logo img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    #boot .logo svg { width: 72%; height: 72%; display: block; margin: auto; margin-top: 14%; }
     /* Sheen sweep across the logo. */
     #boot .logo::after {
       content: ""; position: absolute; inset: 0;
@@ -77,7 +77,22 @@
 </head>
 <body>
   <div id="boot">
-    <div class="logo"><img src="iceberg-splash.jpg" alt="ICEBERG" /></div>
+    <div class="logo">
+      <!-- Inline SVG mountain wireframe — no external file needed -->
+      <svg viewBox="0 0 96 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="ICEBERG">
+        <polyline points="3.84,80.96 48,3.52 92.16,80.96" stroke="#00CFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="48" y1="3.52" x2="33.24" y2="54.23" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="48" y1="3.52" x2="18.48" y2="79.21" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="48" y1="3.52" x2="62.76" y2="54.23" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="48" y1="3.52" x2="77.52" y2="79.21" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="26.6"  y1="24.66" x2="69.4"  y2="24.66" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="14.94" y1="44.84" x2="81.06" y2="44.84" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="7.0"   y1="63.54" x2="89.0"  y2="63.54" stroke="#00CFFF" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        <line x1="3.84" y1="80.96" x2="92.16" y2="80.96" stroke="#00CFFF" stroke-width="1.4" opacity="0.7"/>
+        <circle cx="48" cy="3.52" r="2.5" fill="#00CFFF"/>
+        <text x="48" y="87" text-anchor="middle" font-family="system-ui,sans-serif" font-size="7" font-weight="800" letter-spacing="3" fill="white">ICEBERG</text>
+      </svg>
+    </div>
     <div class="bar"><i></i></div>
   </div>
 
