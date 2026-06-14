@@ -620,3 +620,177 @@ class _ScheduleCard extends StatelessWidget {
     );
   }
 }
+
+// ── Campus Pulse card ─────────────────────────────────────────────────────────
+class _PulseCard extends StatelessWidget {
+  final Map<String, dynamic> story;
+  const _PulseCard({required this.story});
+
+  IconData get _icon => switch (story['story_type']) {
+    'event' => Icons.event_rounded,
+    'challenge' => Icons.emoji_events_rounded,
+    'vocab' => Icons.translate_rounded,
+    'tip' => Icons.lightbulb_outline_rounded,
+    'update' => Icons.campaign_rounded,
+    _ => Icons.campaign_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.ice;
+    final created = DateTime.tryParse(story['created_at'] ?? '');
+    final when = created == null ? '' : _relative(created);
+
+    return SizedBox(
+      width: 240,
+      child: IceCard(
+        padding: const EdgeInsets.all(16),
+        onTap: () => _showDetail(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: t.skySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(_icon, size: 16, color: t.sky),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_typeLabel(story['story_type'])}\n$when',
+                    maxLines: 2,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                      color: t.textLow,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              story['title'] ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+                color: t.textHi,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  'Read More',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: t.accent,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 14, color: t.accent),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _typeLabel(dynamic type) => switch (type) {
+    'event' => 'Event',
+    'challenge' => 'Competition',
+    'vocab' => 'Vocabulary',
+    'tip' => 'Study Tip',
+    'update' => 'Teacher Update',
+    _ => 'Announcement',
+  };
+
+  String _relative(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return DateFormat('MMM d').format(dt);
+  }
+
+  void _showDetail(BuildContext context) {
+    final t = context.ice;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: t.card,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: t.stroke,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            StatusBadge(_typeLabel(story['story_type']), tone: BadgeTone.sky),
+            const SizedBox(height: 12),
+            Text(
+              story['title'] ?? '',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: t.textHi,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if ((story['image_url'] as String?)?.isNotEmpty == true) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  story['image_url'] as String,
+                  height: 170,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Flexible(
+              child: SingleChildScrollView(
+                child: Text(
+                  (story['content'] as String?)?.isNotEmpty == true
+                      ? story['content'] as String
+                      : 'No further details.',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    height: 1.5,
+                    color: t.textMid,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
