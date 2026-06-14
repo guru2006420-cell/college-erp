@@ -324,12 +324,13 @@ AXES_LOCKOUT_TEMPLATE = None  # use the JSON 403 default
 # Sessions (Remember Me support)
 # ---------------------------------------------------------------------------
 
-SESSION_COOKIE_AGE = 1209600  # 2 weeks default
+SESSION_COOKIE_AGE = 3600  # 1 hour — auto-logout after inactivity (all roles)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-# False: only save session when it's been modified; avoids a DB write on every
-# anonymous request (including the login page GET), which prevents 500s when
-# the session table is temporarily unavailable.
-SESSION_SAVE_EVERY_REQUEST = False
+# True so the 1-hour window slides forward on every request: active users stay
+# signed in, but a session left idle for an hour expires server-side and the
+# next request bounces to the login page. Empty (anonymous) sessions are not
+# written, so the login-page GET still avoids a DB write.
+SESSION_SAVE_EVERY_REQUEST = True
 
 # ---------------------------------------------------------------------------
 # Email
