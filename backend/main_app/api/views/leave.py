@@ -124,6 +124,11 @@ class LeaveDetailView(APIView):
                 leave = LeaveReportStaff.objects.get(pk=pk)
             except LeaveReportStaff.DoesNotExist:
                 return Response({"detail": "Leave not found."}, status=status.HTTP_404_NOT_FOUND)
+            # Branch isolation: a branch admin may only action staff in their scope.
+            if not branching.filter_staff_for_user(
+                request.user, Staff.objects.filter(pk=leave.staff_id)
+            ).exists():
+                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
             leave.status = new_status
             leave.save(update_fields=["status", "updated_at"])
             return Response(AdminStaffLeaveSerializer(leave).data)
@@ -132,6 +137,11 @@ class LeaveDetailView(APIView):
                 leave = LeaveReportStudent.objects.get(pk=pk)
             except LeaveReportStudent.DoesNotExist:
                 return Response({"detail": "Leave not found."}, status=status.HTTP_404_NOT_FOUND)
+            # Branch isolation: a branch admin may only action students in their scope.
+            if not branching.filter_students_for_user(
+                request.user, Student.objects.filter(pk=leave.student_id)
+            ).exists():
+                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
             leave.status = new_status
             leave.save(update_fields=["status", "updated_at"])
             return Response(AdminStudentLeaveSerializer(leave).data)
