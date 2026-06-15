@@ -89,8 +89,20 @@
 .profile-cover {
   height: 156px;
   background:
-    radial-gradient(circle at 78% 20%, rgba(0, 207, 232, .55), transparent 13rem),
-    linear-gradient(135deg, #071A52 0%, #0B4F8A 62%, #073763 100%);
+    radial-gradient(circle at 82% 16%, rgba(0, 207, 232, .26), transparent 12rem),
+    linear-gradient(135deg, #0A2A6B 0%, #0B4F8A 58%, #0A2550 100%);
+  /* Fade the banner into the card so there is no hard color seam below it. */
+  -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
+}
+
+/* Dark theme: keep the cover subtle so it blends with the deep-navy glass card
+   instead of reading as a bright slab. */
+.dark-mode .profile-cover,
+[data-theme="dark"] .profile-cover {
+  background:
+    radial-gradient(circle at 82% 16%, rgba(0, 207, 232, .20), transparent 12rem),
+    linear-gradient(135deg, #0C2350 0%, #0E3A66 60%, #0A1E40 100%);
 }
 
 .profile-identity-content {
