@@ -2148,3 +2148,111 @@ body {
 [data-theme="dark"] .avatar-modal-header h3 { color: #f1f5f9; }
 [data-theme="dark"] .avatar-cancel-btn { color: #94a3b8; border-color: #334155; }
 [data-theme="dark"] .avatar-cancel-btn:hover { color: #e2e8f0; border-color: #64748b; }
+
+/* ============================================================================
+   SIDEBAR REFRESH (shared by all 4 roles via erpnext_sidebar.html)
+   - Brand teal in BOTH themes → text is always light (fixes dark-mode text)
+   - Collapsible Firebase-style icon rail on desktop (reuses .sidebar-collapsed)
+   - Lime active accent; no random blue avatar boxes
+   ============================================================================ */
+:root { --sidebar-rail-width: 76px; }
+
+/* Brand teal surface in every theme so the nav reads the same for all roles */
+.erpnext-sidebar,
+.dark-mode .erpnext-sidebar,
+[data-theme="dark"] .erpnext-sidebar {
+  background: linear-gradient(185deg, #083A41 0%, #072E34 55%, #05242A 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, .06) !important;
+}
+.sidebar-header { border-bottom: 1px solid rgba(255, 255, 255, .08) !important; }
+
+/* User block */
+.sidebar-user-info h6 { color: #F1FAF8 !important; }
+.sidebar-user-info small { color: rgba(230, 242, 240, .6) !important; }
+/* Single brand chip for the avatar — no per-emoji blue backgrounds */
+.sidebar-user-avatar,
+.dark-mode .sidebar-user-avatar {
+  background: rgba(205, 241, 99, .15) !important;
+  border: 2px solid rgba(205, 241, 99, .5) !important;
+}
+
+/* Section titles + links — always light, lime accent */
+.nav-section-title,
+.dark-mode .nav-section-title { color: rgba(184, 224, 219, .5) !important; }
+.nav-link,
+.dark-mode .nav-link { color: rgba(232, 244, 242, .82) !important; }
+.nav-icon,
+.dark-mode .nav-icon { color: rgba(232, 244, 242, .7) !important; opacity: 1 !important; }
+.nav-link:hover,
+.dark-mode .nav-link:hover { background: rgba(255, 255, 255, .06) !important; color: #fff !important; }
+.nav-link:hover .nav-icon { color: #fff !important; }
+.nav-link.active,
+.dark-mode .nav-link.active {
+  background: rgba(205, 241, 99, .14) !important;
+  border-left-color: #CDF163 !important;
+  color: #fff !important;
+}
+.nav-link.active .nav-icon,
+.dark-mode .nav-link.active .nav-icon { color: #CDF163 !important; }
+
+/* Footer / Sign Out on the dark surface */
+.sidebar-footer { border-top: 1px solid rgba(255, 255, 255, .08) !important; }
+.sidebar-logout-btn {
+  color: rgba(255, 255, 255, .85) !important;
+  background: rgba(255, 255, 255, .05) !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+.sidebar-logout-btn:hover {
+  color: #fff !important;
+  background: rgba(229, 107, 111, .22) !important;
+  border-color: rgba(229, 107, 111, .5) !important;
+}
+
+/* ---- Collapsible icon rail (desktop only; mobile keeps off-canvas) ---- */
+@media (min-width: 992px) {
+  body.sidebar-collapsed .erpnext-sidebar {
+    transform: none !important;            /* override the off-canvas slide */
+    width: var(--sidebar-rail-width) !important;
+  }
+  body.sidebar-collapsed .erpnext-main { margin-left: var(--sidebar-rail-width) !important; }
+
+  /* Hide labels/titles/user text/footer label — show icons only */
+  body.sidebar-collapsed .nav-text,
+  body.sidebar-collapsed .nav-section-title,
+  body.sidebar-collapsed .sidebar-user-info,
+  body.sidebar-collapsed .sidebar-logout-btn .label,
+  body.sidebar-collapsed .sidebar-logout-btn span:not(.icon) { display: none !important; }
+
+  body.sidebar-collapsed .sidebar-user { justify-content: center; }
+  body.sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: 11px 0;
+    margin-right: 0;
+    border-radius: 0;
+    border-left-width: 0;
+    position: relative;
+  }
+  body.sidebar-collapsed .nav-link.active { background: rgba(205, 241, 99, .16) !important; }
+  body.sidebar-collapsed .nav-icon { margin-right: 0; font-size: 17px; }
+  body.sidebar-collapsed .sidebar-footer { padding: 8px 6px 10px; }
+  body.sidebar-collapsed .sidebar-logout-btn { justify-content: center; }
+
+  /* Unread badge → small dot pinned to the icon */
+  body.sidebar-collapsed .nav-link .badge {
+    position: absolute; top: 6px; right: 18px;
+    min-width: 9px; width: 9px; height: 9px;
+    padding: 0; font-size: 0; border-radius: 50%;
+  }
+
+  /* Hover tooltip (data-label set by JS from the nav text) */
+  body.sidebar-collapsed .nav-link[data-label]::after {
+    content: attr(data-label);
+    position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+    background: #05242A; color: #E6F2F0;
+    padding: 6px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 600;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .4); border: 1px solid rgba(255,255,255,.08);
+    z-index: 1100; transition: opacity .12s ease;
+  }
+  body.sidebar-collapsed .nav-link:hover[data-label]::after { opacity: 1; }
+}

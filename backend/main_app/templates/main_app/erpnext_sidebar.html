@@ -472,17 +472,19 @@
 (function () {
   var AVATARS = ["🧑‍🎓","👨‍🎓","👩‍🎓","🧑‍💻","👨‍💻","👩‍💻","🧑‍🏫","👨‍🏫","👩‍🏫","🤓",
                  "😊","😎","💡","📚","🏆","⭐","💪","🎯","🌟","🦉","🌍","✏️","🎨","🔬"];
-  var BG = ["#1B3F7A","#0C1F45","#7C3AED","#0891B2","#1F2937","#6D28D9",
-            "#BE185D","#B45309","#C2410C","#15803D","#0284C7","#4338CA",
-            "#A16207","#7C2D12","#B45309","#EA580C","#B91C1C","#991B1B",
-            "#4F46E5","#65A30D","#0D9488","#6B7280","#DB2777","#0891B2"];
+  // Emoji only — the chip background comes from CSS (single brand colour),
+  // so avatars no longer get a random clashing blue box.
   document.querySelectorAll('.sidebar-sticker').forEach(function (el) {
     var idx = parseInt(el.dataset.av || '1', 10) - 1;
     if (idx >= 0 && idx < AVATARS.length) {
       el.textContent = AVATARS[idx];
-      el.parentElement.style.background = BG[idx];
       el.style.fontSize = '20px';
     }
+  });
+  // Tooltips for the collapsed icon rail: label each link with its nav text.
+  document.querySelectorAll('.erpnext-sidebar .nav-link').forEach(function (link) {
+    var t = link.querySelector('.nav-text');
+    if (t) link.setAttribute('data-label', t.textContent.trim());
   });
 })();
 </script>
