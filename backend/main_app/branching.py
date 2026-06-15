@@ -64,6 +64,30 @@ def is_super_admin(user):
     return bool(profile and profile.is_super_admin)
 
 
+def is_recovery_admin(user):
+    """True for the permanent top-level recovery account.
+
+    The Recovery Admin can never be demoted or deleted, and is the only admin
+    allowed to promote other admins to super admin. It is identified by the
+    Django superuser flag (set only on the seeded recovery account, see
+    ``apps.create_recovery_admin_access``) or, as a fallback, the configured
+    ``RECOVERY_ADMIN_EMAIL``.
+    """
+    if get_admin_profile(user) is None:
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    import os
+
+    recovery_email = (
+        os.environ.get("RECOVERY_ADMIN_EMAIL", "iceberg.edu.center@gmail.com")
+        .strip()
+        .lower()
+    )
+    email = (getattr(user, "email", "") or "").strip().lower()
+    return bool(email and email == recovery_email)
+
+
 # ── Accessible branches ──────────────────────────────────────────────────────
 
 

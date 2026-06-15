@@ -14,6 +14,8 @@ from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 
+from django.contrib.auth import update_session_auth_hash
+
 from .decorators import admin_only
 from .forms import *
 from .models import *
@@ -1506,6 +1508,98 @@ def add_admin(request):
 
 
 @admin_only
+def edit_admin(request, admin_id):
+    """Super admins edit an existing admin's credentials (name, email,
+    password). The Recovery Admin's credentials can only be edited by the
+    Recovery Admin itself."""
+    if not branching.is_super_admin(request.user):
+        messages.error(request, "Only a super admin can edit admin accounts.")
+        return redirect(reverse("admin_home"))
+
+    admin_profile = get_object_or_404(
+        Admin.objects.select_related("admin"), id=admin_id
+    )
+    target = admin_profile.admin
+    editing_self = target == request.user
+
+    if branching.is_recovery_admin(target) and not branching.is_recovery_admin(request.user):
+        messages.error(request, "Only the Recovery Admin can edit its own credentials.")
+        return redirect(reverse("manage_admin"))
+
+    def _render(form_data):
+        return render(request, "hod_template/edit_admin_template.html", {
+            "page_title": "Edit Admin",
+            "admin_profile": admin_profile,
+            "editing_self": editing_self,
+            "form_data": form_data,
+        })
+
+    if request.method == "POST":
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
+        gender = request.POST.get("gender", "")
+        address = request.POST.get("address", "").strip()
+
+        errors = []
+        if not first_name:
+            errors.append("First name is required.")
+        if not last_name:
+            errors.append("Last name is required.")
+        if not email:
+            errors.append("Email address is required.")
+        elif CustomUser.objects.filter(email__iexact=email).exclude(pk=target.pk).exists():
+            errors.append("Another account already uses this email.")
+        if password and len(password) < 6:
+            errors.append("Password must be at least 6 characters.")
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return _render({
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "gender": gender,
+                "address": address,
+            })
+
+        try:
+            target.first_name = first_name
+            target.last_name = last_name
+            target.email = email
+            target.gender = gender
+            target.address = address
+            if password:
+                target.set_password(password)
+            target.save()
+            # Changing your own password rotates the session hash and would log
+            # you out — keep the current session alive instead.
+            if editing_self and password:
+                update_session_auth_hash(request, target)
+            name = target.get_full_name() or target.email
+            if password and not editing_self:
+                messages.success(
+                    request,
+                    f'Saved "{name}". They must sign in again with the new password.',
+                )
+            else:
+                messages.success(request, f'Saved changes to "{name}".')
+            return redirect(reverse("manage_admin"))
+        except Exception as exc:
+            messages.error(request, f"Could not save changes — {exc}")
+
+    return _render({
+        "first_name": target.first_name,
+        "last_name": target.last_name,
+        "email": target.email,
+        "gender": target.gender,
+        "address": target.address,
+    })
+
+
+@admin_only
 def manage_admin(request):
     if not branching.is_super_admin(request.user):
         messages.error(request, "Only a super admin can manage admin accounts.")
@@ -1522,7 +1616,7 @@ def manage_admin(request):
         .order_by("admin__first_name", "admin__last_name", "admin__email")
     )
     all_branches = Branch.objects.all().order_by("name")
-    super_admin_count = sum(1 for ap in admin_profiles if ap.is_super_admin)
+    current_is_recovery = branching.is_recovery_admin(request.user)
 
     for admin_profile in admin_profiles:
         assigned_branches = list(admin_profile.branches.all())
@@ -1534,13 +1628,20 @@ def manage_admin(request):
             current_admin_profile is not None
             and admin_profile.id == current_admin_profile.id
         )
-        admin_profile.superadmin_toggle_locked = (
-            admin_profile.is_super_admin and super_admin_count == 1
+        admin_profile.is_recovery = branching.is_recovery_admin(admin_profile.admin)
+        # Only the Recovery Admin may promote/demote super-admin status, and the
+        # Recovery Admin itself can never be demoted.
+        admin_profile.can_toggle_super = (
+            current_is_recovery and not admin_profile.is_recovery
         )
-        # Allow delete only when: not the logged-in user AND not the sole super admin
+        # Any super admin may edit credentials, except the Recovery Admin's,
+        # which only the Recovery Admin itself can change.
+        admin_profile.can_edit_credentials = (
+            not admin_profile.is_recovery or admin_profile.is_current_user
+        )
+        # Delete: never the Recovery Admin, never your own account.
         admin_profile.can_delete = (
-            not admin_profile.is_current_user
-            and not admin_profile.superadmin_toggle_locked
+            not admin_profile.is_current_user and not admin_profile.is_recovery
         )
 
     return render(
@@ -1549,6 +1650,7 @@ def manage_admin(request):
         {
             "admin_profiles": admin_profiles,
             "all_branches": all_branches,
+            "current_is_recovery": current_is_recovery,
             "page_title": "Manage Admins",
         },
     )
@@ -1567,10 +1669,8 @@ def delete_admin(request, admin_id):
         messages.error(request, "You cannot delete your own admin account.")
         return redirect(reverse("manage_admin"))
 
-    if admin_profile.is_super_admin and Admin.objects.filter(is_super_admin=True).count() <= 1:
-        messages.error(
-            request, "Cannot delete the only super admin. Promote another admin first."
-        )
+    if branching.is_recovery_admin(admin_profile.admin):
+        messages.error(request, "The Recovery Admin account cannot be deleted.")
         return redirect(reverse("manage_admin"))
 
     name = admin_profile.admin.get_full_name() or admin_profile.admin.email
@@ -1617,33 +1717,27 @@ def update_admin_branch_access(request, admin_id):
     )
     make_super_admin = request.POST.get("is_super_admin") == "on"
     branch_ids = request.POST.getlist("branches")
+    role_changed = make_super_admin != admin_profile.is_super_admin
 
-    # Single-superadmin enforcement: block promoting a second admin to superadmin.
-    if make_super_admin and not admin_profile.is_super_admin:
-        existing_super = Admin.objects.filter(is_super_admin=True).exclude(id=admin_profile.id).first()
-        if existing_super:
-            name = existing_super.admin.get_full_name() or existing_super.admin.email
-            messages.error(
-                request,
-                f"Only one super admin is allowed. {name} is already the super admin. "
-                "Demote them first before promoting another admin.",
-            )
-            return redirect(reverse("manage_admin"))
+    # The Recovery Admin is the permanent top-level account — never demote it.
+    if branching.is_recovery_admin(admin_profile.admin) and not make_super_admin:
+        messages.error(request, "The Recovery Admin cannot be demoted.")
+        return redirect(reverse("manage_admin"))
 
-    if not make_super_admin:
-        if not branch_ids:
-            messages.error(
-                request,
-                "Select at least one dedicated branch for a branch admin.",
-            )
-            return redirect(reverse("manage_admin"))
-
-        other_super_admin_exists = (
-            Admin.objects.filter(is_super_admin=True).exclude(id=admin_profile.id).exists()
+    # Promoting/demoting super-admin status is a Recovery-Admin-only power.
+    if role_changed and not branching.is_recovery_admin(request.user):
+        messages.error(
+            request,
+            "Only the Recovery Admin can change an admin's super-admin status.",
         )
-        if admin_profile.is_super_admin and not other_super_admin_exists:
-            messages.error(request, "Keep at least one super admin with access to all branches.")
-            return redirect(reverse("manage_admin"))
+        return redirect(reverse("manage_admin"))
+
+    if not make_super_admin and not branch_ids:
+        messages.error(
+            request,
+            "Select at least one dedicated branch for a branch admin.",
+        )
+        return redirect(reverse("manage_admin"))
 
     selected_branches = Branch.objects.filter(id__in=branch_ids).order_by("name")
     if not make_super_admin and not selected_branches.exists():

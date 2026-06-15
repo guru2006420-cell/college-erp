@@ -11,9 +11,11 @@ from django.urls import reverse
 from main_app.hod_views import _generate_login_id
 from main_app.messaging import unread_message_count
 from main_app.models import (
+    Admin,
     Attendance,
     AttendanceReport,
     Assignment,
+    Branch,
     ChatMessage,
     ChatReadState,
     ChatThread,
@@ -1829,3 +1831,156 @@ class StudentMobileApiTests(TestCase):
         body = res.json()
         self.assertEqual(body["attachment_name"], "notes.pdf")
         self.assertIsNotNone(body["attachment_url"])
+
+
+@override_settings(**_BASE_OVERRIDES)
+class AdminManagementTests(TestCase):
+    """Recovery Admin promotes admins to super; super admins edit credentials."""
+
+    def setUp(self):
+        UserModel = get_user_model()
+        self.branch = Branch.objects.create(name="Central")
+
+        # Permanent top-level recovery account (marked by is_superuser).
+        self.recovery_user = UserModel.objects.create_user(
+            email="recovery-mgmt@example.com",
+            password="RecoveryPass123!",
+            first_name="Rec",
+            last_name="Overy",
+            user_type="1",
+        )
+        self.recovery_user.is_superuser = True
+        self.recovery_user.save(update_fields=["is_superuser"])
+
+        # A second, ordinary super admin (signal makes new admins super).
+        self.super_user = UserModel.objects.create_user(
+            email="super-mgmt@example.com",
+            password="SuperPass123!",
+            first_name="Su",
+            last_name="Per",
+            user_type="1",
+        )
+
+        # A branch admin (demoted from the default super state).
+        self.branch_user = UserModel.objects.create_user(
+            email="branch-mgmt@example.com",
+            password="BranchPass123!",
+            first_name="Bree",
+            last_name="Anch",
+            user_type="1",
+        )
+        self.branch_admin = Admin.objects.get(admin=self.branch_user)
+        self.branch_admin.is_super_admin = False
+        self.branch_admin.branches.set([self.branch])
+        self.branch_admin.save()
+
+    def test_recovery_can_promote_branch_admin_to_super(self):
+        self.client.force_login(self.recovery_user)
+        self.client.post(
+            reverse("update_admin_branch_access", args=[self.branch_admin.id]),
+            {"is_super_admin": "on"},
+        )
+        self.branch_admin.refresh_from_db()
+        self.assertTrue(self.branch_admin.is_super_admin)
+        # Recovery admin keeps super status — multiple super admins coexist.
+        self.assertTrue(Admin.objects.get(admin=self.recovery_user).is_super_admin)
+        self.assertEqual(self.branch_admin.branches.count(), 0)
+
+    def test_non_recovery_super_cannot_change_super_status(self):
+        self.client.force_login(self.super_user)
+        self.client.post(
+            reverse("update_admin_branch_access", args=[self.branch_admin.id]),
+            {"is_super_admin": "on"},
+        )
+        self.branch_admin.refresh_from_db()
+        self.assertFalse(self.branch_admin.is_super_admin)
+
+    def test_recovery_admin_cannot_be_demoted(self):
+        recovery_admin = Admin.objects.get(admin=self.recovery_user)
+        self.client.force_login(self.recovery_user)
+        self.client.post(
+            reverse("update_admin_branch_access", args=[recovery_admin.id]),
+            {"branches": [self.branch.id]},  # no is_super_admin → demote attempt
+        )
+        recovery_admin.refresh_from_db()
+        self.assertTrue(recovery_admin.is_super_admin)
+
+    def test_super_admin_can_edit_admin_credentials(self):
+        self.client.force_login(self.super_user)
+        response = self.client.post(
+            reverse("edit_admin", args=[self.branch_admin.id]),
+            {
+                "first_name": "Brenda",
+                "last_name": "Branch",
+                "email": "new-branch@example.com",
+                "password": "BrandNewPass1",
+            },
+        )
+        self.assertRedirects(response, reverse("manage_admin"), fetch_redirect_response=False)
+        self.branch_user.refresh_from_db()
+        self.assertEqual(self.branch_user.first_name, "Brenda")
+        self.assertEqual(self.branch_user.email, "new-branch@example.com")
+        self.assertTrue(self.branch_user.check_password("BrandNewPass1"))
+
+    def test_edit_admin_blank_password_keeps_current(self):
+        self.client.force_login(self.super_user)
+        self.client.post(
+            reverse("edit_admin", args=[self.branch_admin.id]),
+            {
+                "first_name": "Bree",
+                "last_name": "Anch",
+                "email": "branch-mgmt@example.com",
+                "password": "",
+            },
+        )
+        self.branch_user.refresh_from_db()
+        self.assertTrue(self.branch_user.check_password("BranchPass123!"))
+
+    def test_non_recovery_super_cannot_edit_recovery_credentials(self):
+        recovery_admin = Admin.objects.get(admin=self.recovery_user)
+        self.client.force_login(self.super_user)
+        response = self.client.post(
+            reverse("edit_admin", args=[recovery_admin.id]),
+            {"first_name": "Hacked", "last_name": "Overy", "email": "x@example.com"},
+        )
+        self.assertRedirects(response, reverse("manage_admin"), fetch_redirect_response=False)
+        self.recovery_user.refresh_from_db()
+        self.assertEqual(self.recovery_user.first_name, "Rec")
+        self.assertEqual(self.recovery_user.email, "recovery-mgmt@example.com")
+
+    def test_recovery_admin_cannot_be_deleted(self):
+        recovery_admin = Admin.objects.get(admin=self.recovery_user)
+        self.client.force_login(self.super_user)
+        self.client.post(reverse("delete_admin", args=[recovery_admin.id]))
+        self.assertTrue(
+            get_user_model().objects.filter(pk=self.recovery_user.pk).exists()
+        )
+
+    def test_edit_admin_rejects_duplicate_email(self):
+        self.client.force_login(self.super_user)
+        self.client.post(
+            reverse("edit_admin", args=[self.branch_admin.id]),
+            {
+                "first_name": "Bree",
+                "last_name": "Anch",
+                "email": "super-mgmt@example.com",  # already used by super_user
+                "password": "",
+            },
+        )
+        self.branch_user.refresh_from_db()
+        self.assertEqual(self.branch_user.email, "branch-mgmt@example.com")
+
+    def test_manage_admin_page_renders_for_recovery(self):
+        self.client.force_login(self.recovery_user)
+        response = self.client.get(reverse("manage_admin"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Recovery Admin")
+        # Edit link is present for editable admins.
+        self.assertContains(response, reverse("edit_admin", args=[self.branch_admin.id]))
+
+    def test_edit_admin_page_renders(self):
+        self.client.force_login(self.super_user)
+        response = self.client.get(reverse("edit_admin", args=[self.branch_admin.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "branch-mgmt@example.com")
+        self.assertContains(response, "Save Changes")

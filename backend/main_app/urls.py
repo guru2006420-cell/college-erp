@@ -165,6 +165,7 @@ urlpatterns = [
     # Admin management
     path("admin/add/", hod_views.add_admin, name="add_admin"),
     path("admin/manage/", hod_views.manage_admin, name="manage_admin"),
+    path("admin/edit/<int:admin_id>/", hod_views.edit_admin, name="edit_admin"),
     path("admin/delete/<int:admin_id>/", hod_views.delete_admin, name="delete_admin"),
     # Branch
     path("branch/manage/", hod_views.manage_branch, name="manage_branch"),
