@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for the release APK to reach the API server. Flutter only
+         adds this automatically to the debug/profile manifests, so release
+         builds have no network access without it. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="ICEBERG"
         android:name="${applicationName}"
