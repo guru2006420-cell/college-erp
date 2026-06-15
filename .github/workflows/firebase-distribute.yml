@@ -73,7 +73,6 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          groups: testers
           file: mobile/iceberg_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           releaseNotes: "${{ steps.notes.outputs.text }} [arm64]"
 
@@ -82,7 +81,6 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          groups: testers
           file: mobile/iceberg_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           releaseNotes: "${{ steps.notes.outputs.text }} [arm32]"
 
