@@ -206,8 +206,8 @@
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      <span class="en">Download APK (64-bit)</span>
-      <span class="uz">APK yuklab olish (64-bit)</span>
+      <span class="en">Download APK</span>
+      <span class="uz">APK yuklab olish</span>
     </a>
     <p class="meta">
       <span class="en">Android only</span>
@@ -215,21 +215,9 @@
       <span>•</span>
       <span>~{{ apk_size_mb }} MB</span>
       <span>•</span>
-      <span class="en">For phones made after 2018</span>
-      <span class="uz">2018 yildan keyingi telefonlar uchun</span>
+      <span class="en">Works on all Android phones</span>
+      <span class="uz">Barcha Android telefonlarda ishlaydi</span>
     </p>
-
-    {% if apk_32_size_mb %}
-    <a href="/download/app-32bit.apk" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.625rem 1.5rem;background:transparent;border:1.5px solid var(--border);color:var(--muted);font-size:.875rem;font-weight:600;border-radius:12px;text-decoration:none;margin-top:.75rem;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <span class="en">Download APK (32-bit, ~{{ apk_32_size_mb }} MB) — for older phones</span>
-      <span class="uz">APK yuklab olish (32-bit, ~{{ apk_32_size_mb }} MB) — eski telefonlar uchun</span>
-    </a>
-    {% endif %}
   </div>
 
   <!-- Installation guide -->

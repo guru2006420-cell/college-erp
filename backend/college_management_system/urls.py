@@ -9,7 +9,6 @@ from main_app.flutter_view import (
     flutter_app,
     deploy_flutter,
     download_apk,
-    download_apk_32,
     download_page,
 )
 
@@ -27,9 +26,8 @@ urlpatterns = [
     path("app", RedirectView.as_view(url="/app/", permanent=False)),
     # Deploy webhook — triggers git pull on the VPS (HMAC-protected)
     path("api/deploy/flutter/", deploy_flutter, name="deploy_flutter"),
-    # APK downloads (arm64 primary; armeabi-v7a for older 32-bit devices)
+    # APK download — single universal APK that installs on every Android device.
     path("download/app.apk", download_apk, name="download_apk"),
-    path("download/app-32bit.apk", download_apk_32, name="download_apk_32"),
     path("download/", download_page, name="download_page"),
 ]
 
