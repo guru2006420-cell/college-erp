@@ -1,28 +1,32 @@
 """Currency formatting for UZS soʻm.
 
-Usage: {% load uzs %}  →  {{ invoice.amount|uzs }}  →  "1 200 000 soʻm"
+Usage: {% load uzs %}  ->  {{ invoice.amount|uzs }}  ->  "200 ming soʻm"
+
+Round thousands/millions render the local "ming"/"million" words; other
+amounts fall back to comma-grouped digits (e.g. "200,500 soʻm").
 """
 from decimal import Decimal, InvalidOperation
 
 from django import template
+
+from ..payments import format_uzs_number
 
 register = template.Library()
 
 
 @register.filter
 def uzs(value, suffix="soʻm"):
-    """Format a number as UZS with space-grouped thousands."""
+    """Format a number as UZS soʻm (e.g. "200 ming soʻm", "200,500 soʻm")."""
     if value is None or value == "":
         return "—"
     try:
-        amount = Decimal(value)
+        Decimal(value)
     except (InvalidOperation, TypeError, ValueError):
         return value
-    grouped = f"{amount:,.0f}".replace(",", " ")  # narrow no-break space
-    return f"{grouped} {suffix}".strip()
+    return f"{format_uzs_number(value)} {suffix}".strip()
 
 
 @register.filter
 def uzs_plain(value):
-    """UZS amount without the currency suffix (for inputs/tables)."""
+    """UZS amount without the currency suffix (for tables)."""
     return uzs(value, suffix="")

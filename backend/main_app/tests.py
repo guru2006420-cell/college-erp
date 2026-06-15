@@ -1478,9 +1478,9 @@ class PaymentsTests(TestCase):
     def test_uzs_filter_formatting(self):
         from main_app.templatetags.uzs import uzs
 
-        # Thousands are grouped with U+202F (narrow no-break space) so the
-        # amount never line-wraps mid-number.
-        self.assertEqual(uzs(1200000), "1 200 000 soʻm")
+        # Round thousands/millions use the local "ming"/"million" words.
+        self.assertEqual(uzs(1200000), "1.2 million soʻm")
+        self.assertEqual(uzs(200000), "200 ming soʻm")
         self.assertEqual(uzs(None), "—")
 
     def test_uz_phone_normalization(self):
@@ -1886,24 +1886,26 @@ class AdminManagementTests(TestCase):
         self.assertTrue(Admin.objects.get(admin=self.recovery_user).is_super_admin)
         self.assertEqual(self.branch_admin.branches.count(), 0)
 
-    def test_non_recovery_super_cannot_change_super_status(self):
+    def test_any_super_admin_can_promote_to_super(self):
         self.client.force_login(self.super_user)
         self.client.post(
             reverse("update_admin_branch_access", args=[self.branch_admin.id]),
             {"is_super_admin": "on"},
         )
         self.branch_admin.refresh_from_db()
-        self.assertFalse(self.branch_admin.is_super_admin)
+        self.assertTrue(self.branch_admin.is_super_admin)
 
-    def test_recovery_admin_cannot_be_demoted(self):
-        recovery_admin = Admin.objects.get(admin=self.recovery_user)
-        self.client.force_login(self.recovery_user)
+    def test_cannot_demote_last_super_admin(self):
+        # Reduce to a single super admin, then try to demote it.
+        Admin.objects.exclude(admin=self.super_user).update(is_super_admin=False)
+        super_admin = Admin.objects.get(admin=self.super_user)
+        self.client.force_login(self.super_user)
         self.client.post(
-            reverse("update_admin_branch_access", args=[recovery_admin.id]),
+            reverse("update_admin_branch_access", args=[super_admin.id]),
             {"branches": [self.branch.id]},  # no is_super_admin → demote attempt
         )
-        recovery_admin.refresh_from_db()
-        self.assertTrue(recovery_admin.is_super_admin)
+        super_admin.refresh_from_db()
+        self.assertTrue(super_admin.is_super_admin)
 
     def test_super_admin_can_edit_admin_credentials(self):
         self.client.force_login(self.super_user)
@@ -1936,24 +1938,70 @@ class AdminManagementTests(TestCase):
         self.branch_user.refresh_from_db()
         self.assertTrue(self.branch_user.check_password("BranchPass123!"))
 
-    def test_non_recovery_super_cannot_edit_recovery_credentials(self):
+    def test_super_admin_can_change_recovery_credentials(self):
         recovery_admin = Admin.objects.get(admin=self.recovery_user)
         self.client.force_login(self.super_user)
         response = self.client.post(
             reverse("edit_admin", args=[recovery_admin.id]),
-            {"first_name": "Hacked", "last_name": "Overy", "email": "x@example.com"},
+            {
+                "first_name": "Rec",
+                "last_name": "Overy",
+                "email": "new-recovery@example.com",
+                "password": "FreshRecovery1",
+            },
         )
         self.assertRedirects(response, reverse("manage_admin"), fetch_redirect_response=False)
         self.recovery_user.refresh_from_db()
-        self.assertEqual(self.recovery_user.first_name, "Rec")
-        self.assertEqual(self.recovery_user.email, "recovery-mgmt@example.com")
+        # Email/password changed on the one account; old credentials no longer work.
+        self.assertEqual(self.recovery_user.email, "new-recovery@example.com")
+        self.assertTrue(self.recovery_user.check_password("FreshRecovery1"))
+        self.assertFalse(self.recovery_user.check_password("RecoveryPass123!"))
+        # No duplicate account was created at the old address.
+        self.assertFalse(
+            get_user_model().objects.filter(email__iexact="recovery-mgmt@example.com").exists()
+        )
 
-    def test_recovery_admin_cannot_be_deleted(self):
+    def test_super_admin_can_delete_recovery(self):
         recovery_admin = Admin.objects.get(admin=self.recovery_user)
         self.client.force_login(self.super_user)
         self.client.post(reverse("delete_admin", args=[recovery_admin.id]))
-        self.assertTrue(
+        self.assertFalse(
             get_user_model().objects.filter(pk=self.recovery_user.pk).exists()
+        )
+
+    def test_login_rejects_old_recovery_credentials_after_change(self):
+        """The reported bug: change recovery creds, but old ones still log in.
+        Drives the real login endpoint to prove old creds are now rejected."""
+        recovery_admin = Admin.objects.get(admin=self.recovery_user)
+        self.client.force_login(self.super_user)
+        self.client.post(
+            reverse("edit_admin", args=[recovery_admin.id]),
+            {
+                "first_name": "Rec",
+                "last_name": "Overy",
+                "email": "moved-recovery@example.com",
+                "password": "FreshRecovery1",
+            },
+        )
+        self.client.logout()
+
+        # OLD email + OLD password must NOT authenticate (and must not resurrect).
+        self.client.post(
+            reverse("user_login"),
+            {"identifier": "recovery-mgmt@example.com", "password": "RecoveryPass123!"},
+        )
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertFalse(
+            get_user_model().objects.filter(email__iexact="recovery-mgmt@example.com").exists()
+        )
+
+        # NEW credentials work.
+        self.client.post(
+            reverse("user_login"),
+            {"identifier": "moved-recovery@example.com", "password": "FreshRecovery1"},
+        )
+        self.assertEqual(
+            str(self.client.session.get("_auth_user_id")), str(self.recovery_user.pk)
         )
 
     def test_edit_admin_rejects_duplicate_email(self):
@@ -1984,3 +2032,201 @@ class AdminManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "branch-mgmt@example.com")
         self.assertContains(response, "Save Changes")
+
+
+@override_settings(**_BASE_OVERRIDES)
+class RecoveryAdminSeedingTests(TestCase):
+    """Credential changes to the recovery account must persist — the env-based
+    seeder/login-fallback must not silently revert them."""
+
+    def setUp(self):
+        from main_app.apps import create_recovery_admin_access
+
+        self.seed = create_recovery_admin_access
+        UserModel = get_user_model()
+        # post_migrate seeds the recovery account; fall back to creating it.
+        self.recovery = UserModel.objects.filter(is_superuser=True).order_by("id").first()
+        if self.recovery is None:
+            create_recovery_admin_access(sender=None)
+            self.recovery = UserModel.objects.filter(is_superuser=True).order_by("id").first()
+
+    def test_reseed_does_not_reset_changed_password(self):
+        UserModel = get_user_model()
+        self.recovery.set_password("ChangedByUser1")
+        self.recovery.save()
+
+        self.seed(sender=None)  # simulate a deploy / login-fallback re-seed
+
+        self.recovery.refresh_from_db()
+        self.assertTrue(self.recovery.check_password("ChangedByUser1"))
+        self.assertFalse(self.recovery.check_password("iceberg"))  # weak default gone
+        # No duplicate recovery account was created.
+        self.assertEqual(UserModel.objects.filter(is_superuser=True).count(), 1)
+
+    def test_reseed_does_not_recreate_after_email_change(self):
+        UserModel = get_user_model()
+        self.recovery.email = "new-recovery@example.com"
+        self.recovery.save()
+
+        self.seed(sender=None)
+
+        # The seeder must not recreate a stale duplicate at the default address.
+        self.assertFalse(
+            UserModel.objects.filter(email__iexact="iceberg.edu.center@gmail.com").exists()
+        )
+        self.assertEqual(UserModel.objects.filter(is_superuser=True).count(), 1)
+
+    def test_bootstrap_creates_recovery_when_missing(self):
+        UserModel = get_user_model()
+        UserModel.objects.filter(is_superuser=True).delete()
+        self.assertEqual(UserModel.objects.filter(is_superuser=True).count(), 0)
+
+        self.seed(sender=None)
+
+        recovery = UserModel.objects.filter(is_superuser=True).first()
+        self.assertIsNotNone(recovery)
+        self.assertEqual(recovery.email, "iceberg.edu.center@gmail.com")
+
+
+class UzsFormattingTests(TestCase):
+    """Whole-soʻm display formatting: ming/million words + comma fallback."""
+
+    def test_format_uzs_number(self):
+        from main_app.payments import format_uzs_number
+
+        cases = {
+            0: "0",
+            500: "500",
+            5000: "5 ming",
+            200000: "200 ming",
+            750000: "750 ming",
+            200500: "200,500",
+            1000000: "1 million",
+            1500000: "1.5 million",
+            10000000: "10 million",
+            1250000: "1,250,000",
+        }
+        for amount, expected in cases.items():
+            self.assertEqual(format_uzs_number(amount), expected, amount)
+
+    def test_uzs_filter_adds_suffix(self):
+        from main_app.templatetags.uzs import uzs, uzs_plain
+
+        self.assertEqual(uzs(200000), "200 ming soʻm")
+        self.assertEqual(uzs(200500), "200,500 soʻm")
+        self.assertEqual(uzs_plain(10000000), "10 million")
+
+
+class MoneyInputParsingTests(TestCase):
+    """Admins can type ANY amount, optionally comma/space grouped."""
+
+    def test_grouped_input_strips_separators(self):
+        from main_app.forms import GroupedNumberInput
+
+        w = GroupedNumberInput()
+        self.assertEqual(w.value_from_datadict({"amount": "200,000"}, {}, "amount"), "200000")
+        self.assertEqual(w.value_from_datadict({"amount": "1 500 000"}, {}, "amount"), "1500000")
+        self.assertEqual(w.value_from_datadict({"amount": "200500"}, {}, "amount"), "200500")
+
+    def test_record_payment_accepts_any_amount(self):
+        from main_app.forms import RecordPaymentForm
+
+        # A non-multiple-of-1000, comma-grouped amount must validate (the old
+        # step="1000"/min="1" widget rejected anything not ending in 1).
+        form = RecordPaymentForm(
+            {"amount": "200,501", "method": "cash", "paid_on": "2026-06-15", "note": ""},
+            invoice=None,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        from decimal import Decimal
+
+        self.assertEqual(form.cleaned_data["amount"], Decimal("200501"))
+
+    def test_amount_widget_has_no_step_constraint(self):
+        from main_app.forms import RecordPaymentForm
+
+        html = str(RecordPaymentForm(invoice=None)["amount"])
+        self.assertIn('type="text"', html)   # not a stepped number input
+        self.assertIn("data-money", html)     # JS comma-grouping hook
+        self.assertNotIn('step="1000"', html)
+
+
+@override_settings(**_BASE_OVERRIDES)
+class CollectionsViewTests(TestCase):
+    """Expected-vs-collected analytics: branch breakdown for super admins,
+    group breakdown + attention list for branch admins."""
+
+    def _user(self, email, user_type, login_id=None):
+        return get_user_model().objects.create_user(
+            email=email, password="Pass123!", first_name=email.split("@")[0],
+            last_name="X", user_type=user_type, login_id=login_id,
+        )
+
+    def setUp(self):
+        from main_app.models import Invoice, Payment
+
+        self.today = date.today()
+        self.period = date(self.today.year, self.today.month, 1)
+        self.branch_a = Branch.objects.create(name="Branch A")
+        self.branch_b = Branch.objects.create(name="Branch B")
+        self.course = Course.objects.create(name="IELTS")
+
+        # Super admin (signal default) + branch admin scoped to Branch A.
+        self.super_user = self._user("super-coll@example.com", "1")
+        self.ba_user = self._user("ba-coll@example.com", "1")
+        ba = Admin.objects.get(admin=self.ba_user)
+        ba.is_super_admin = False
+        ba.branches.set([self.branch_a])
+        ba.save()
+
+        ta = self._user("ta-coll@example.com", "2", login_id="TCC001")
+        teacher = Staff.objects.get(admin=ta)
+        self.group_a = Group.objects.create(name="Group A", course=self.course, teacher=teacher, branch=self.branch_a)
+        self.group_b = Group.objects.create(name="Group B", course=self.course, teacher=teacher, branch=self.branch_b)
+
+        def make_invoice(login_id, branch, group, amount, paid, overdue=False):
+            su = self._user(f"s{login_id}@example.com", "3", login_id=login_id)
+            student = Student.objects.get(admin=su)
+            student.branch = branch
+            student.course = self.course
+            student.save()
+            Enrollment.objects.create(student=student, group=group, is_active=True)
+            due = self.today - timedelta(days=1) if overdue else self.today + timedelta(days=10)
+            inv = Invoice.objects.create(
+                student=student, group=group, period=self.period,
+                amount=amount, discount=0, due_date=due,
+            )
+            if paid:
+                Payment.objects.create(invoice=inv, amount=paid, method="cash")
+            inv.refresh_status()
+            return inv
+
+        # Branch A: one fully paid, one partial + overdue.
+        make_invoice("ICA001", self.branch_a, self.group_a, 600000, 600000)
+        make_invoice("ICA002", self.branch_a, self.group_a, 600000, 200000, overdue=True)
+        # Branch B: unpaid.
+        make_invoice("ICB001", self.branch_b, self.group_b, 600000, 0)
+
+    def test_super_admin_sees_all_branches_and_worst(self):
+        self.client.force_login(self.super_user)
+        ctx = self.client.get(reverse("admin_collections")).context
+        self.assertEqual(ctx["expected"], 1800000)
+        self.assertEqual(ctx["collected"], 800000)
+        self.assertEqual(ctx["outstanding"], 1000000)
+        labels = {r["label"] for r in ctx["rows"]}
+        self.assertEqual(labels, {"Branch A", "Branch B"})
+        # Branch B has the bigger gap (600k vs 400k) → ranked worst.
+        self.assertEqual(ctx["worst"]["label"], "Branch B")
+        self.assertEqual(ctx["rows"][0]["label"], "Branch B")
+
+    def test_branch_admin_scoped_to_own_branch_groups(self):
+        self.client.force_login(self.ba_user)
+        ctx = self.client.get(reverse("admin_collections")).context
+        # Only Branch A money is visible.
+        self.assertEqual(ctx["expected"], 1200000)
+        self.assertEqual(ctx["collected"], 800000)
+        labels = {r["label"] for r in ctx["rows"]}
+        self.assertEqual(labels, {"Group A"})  # grouped by group, Branch B excluded
+        # Attention list holds the overdue/partial student, not the fully-paid one.
+        self.assertEqual(len(ctx["attention"]), 1)
+        self.assertTrue(ctx["attention"][0].is_overdue)

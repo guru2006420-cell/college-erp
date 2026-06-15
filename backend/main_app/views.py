@@ -19,7 +19,6 @@ from django.urls import reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .apps import create_recovery_admin_access
 from .forms import AdminForm, StaffProfileForm, StudentProfileForm
 from .models import (
     Admin,
@@ -161,18 +160,12 @@ def doLogin(request, **kwargs):
         messages.error(request, "Login is temporarily unavailable. Please try again in a moment.")
         return redirect(reverse("login_page"))
 
-    # Recovery fallback: only fires for the designated recovery account.
-    recovery_email = (
-        os.environ.get("RECOVERY_ADMIN_EMAIL", "iceberg.edu.center@gmail.com").strip().lower()
-    )
-
-    if user is None and identifier.lower() == recovery_email:
-        try:
-            create_recovery_admin_access(sender=None, force_password=True)
-            user = authenticate(request, username=identifier, password=password)
-        except Exception as exc:
-            logger.error("Recovery admin re-seed failed: %s", exc)
-            user = None
+    # NOTE: there is intentionally no "recovery email" re-seed here. The recovery
+    # account is bootstrapped once on a fresh database (see apps.create_recovery_
+    # admin_access) and is otherwise a normal super-admin account — its password
+    # and email can be changed (or the account deleted) from the UI, and those
+    # changes are permanent. Re-creating it on a failed login would resurrect
+    # deleted/old credentials, which is exactly the bug we are avoiding.
 
     if user is None:
         UserModel = get_user_model()

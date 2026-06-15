@@ -383,6 +383,7 @@ urlpatterns = [
     path("staff/stories/post/", staff_views.staff_create_story, name="staff_create_story"),
     # Payments (Admin/HOD)
     path("admin/payments/", payments_views.admin_payments, name="admin_payments"),
+    path("admin/payments/collections/", payments_views.admin_collections, name="admin_collections"),
     path(
         "admin/payments/generate/",
         payments_views.admin_generate_invoices,

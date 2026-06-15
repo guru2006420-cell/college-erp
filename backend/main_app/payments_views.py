@@ -155,6 +155,95 @@ def _payments_csv(invoices, period):
 
 
 @admin_only
+def admin_collections(request):
+    """Tuition collection analytics for a month.
+
+    Super admins compare expected vs collected money per branch and see which
+    branch is lagging most. Branch admins are scoped to their branches and see
+    the same comparison per group, plus who is overdue / paying partially.
+    """
+    period = _parse_period(request.GET.get("month") or "")
+    is_super = branching.is_super_admin(request.user)
+
+    invoices = list(
+        _scoped_invoices(request.user)
+        .select_related("student__admin", "student__branch", "group", "group__branch")
+        .prefetch_related("payments")
+        .filter(period=period)
+        .exclude(status=Invoice.STATUS_CANCELLED)
+    )
+
+    def _bucket_for(inv):
+        """Group rows by branch for super admins, by group for branch admins."""
+        if is_super:
+            branch = inv.group.branch if (inv.group and inv.group.branch_id) else inv.student.branch
+            return ("none", "No branch") if branch is None else (branch.id, branch.name)
+        if inv.group is not None:
+            return (inv.group.id, inv.group.name)
+        return ("none", "Other / one-off")
+
+    expected = collected = 0
+    buckets = {}
+    for inv in invoices:
+        due = inv.total_due
+        paid = inv.paid_amount
+        expected += due
+        collected += paid
+        key, label = _bucket_for(inv)
+        row = buckets.setdefault(
+            key,
+            {"label": label, "expected": 0, "collected": 0, "outstanding": 0,
+             "students": 0, "overdue": 0, "partial": 0},
+        )
+        row["expected"] += due
+        row["collected"] += paid
+        row["outstanding"] += inv.balance if inv.balance > 0 else 0
+        row["students"] += 1
+        if inv.is_overdue:
+            row["overdue"] += 1
+        if inv.status == Invoice.STATUS_PARTIAL:
+            row["partial"] += 1
+
+    outstanding = expected - collected
+    # Worst collector first — that's the branch/group "lacking the most".
+    rows = sorted(buckets.values(), key=lambda r: r["outstanding"], reverse=True)
+    for row in rows:
+        row["rate"] = round(row["collected"] / row["expected"] * 100, 1) if row["expected"] else 0
+    worst = rows[0] if rows and rows[0]["outstanding"] > 0 else None
+
+    # Branch admins get a "needs attention" list: overdue first, then partial,
+    # each ordered by the biggest outstanding balance.
+    attention = []
+    if not is_super:
+        flagged = [inv for inv in invoices if inv.is_overdue or inv.status == Invoice.STATUS_PARTIAL]
+        flagged.sort(key=lambda i: (0 if i.is_overdue else 1, -float(i.balance)))
+        attention = flagged[:50]
+
+    chart_data = {
+        "labels": [r["label"] for r in rows],
+        "expected": [int(r["expected"]) for r in rows],
+        "collected": [int(r["collected"]) for r in rows],
+    }
+
+    context = {
+        "page_title": "Collections",
+        "period": period,
+        "month_value": period.strftime("%Y-%m"),
+        "is_super_admin": is_super,
+        "expected": expected,
+        "collected": collected,
+        "outstanding": outstanding,
+        "collection_rate": round(collected / expected * 100, 1) if expected else 0,
+        "group_by_label": "Branch" if is_super else "Group",
+        "rows": rows,
+        "worst": worst,
+        "attention": attention,
+        "chart_data": chart_data,
+    }
+    return render(request, "hod_template/collections.html", context)
+
+
+@admin_only
 def admin_generate_invoices(request):
     form = GenerateInvoicesForm(request.POST or None, user=request.user)
     if request.method != "POST":
@@ -250,7 +339,7 @@ def admin_record_payment(request, invoice_id):
         )
         messages.success(
             request,
-            f"Recorded {payment.amount:,.0f} soʻm from {invoice.student}. "
+            f"Recorded {payments._uzs(payment.amount)} from {invoice.student}. "
             f"Invoice is now {invoice.get_status_display().lower()}.",
         )
         return redirect(f"{reverse('admin_payments')}?month={invoice.period:%Y-%m}")
