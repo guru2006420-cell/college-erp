@@ -41,6 +41,17 @@
     linear-gradient(180deg, rgba(234, 248, 255, .78), rgba(255,255,255,.1));
 }
 
+/* Dark theme: the default wash above is a light ice gradient — without this
+   override it bleeds over the content area as a washed-out gray. Use a deep
+   navy wash so the profile background matches the rest of the dark UI. */
+.dark-mode .profile-hub::before,
+[data-theme="dark"] .profile-hub::before {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0, 207, 232, .10), transparent 28rem),
+    radial-gradient(circle at 88% 22%, rgba(11, 79, 138, .16), transparent 30rem),
+    linear-gradient(180deg, rgba(8, 20, 46, .55), rgba(6, 14, 34, .35));
+}
+
 .dark-mode .profile-hub,
 [data-theme="dark"] .profile-hub {
   --profile-text: #EAF8FF;
