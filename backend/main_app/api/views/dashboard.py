@@ -207,10 +207,18 @@ class StudentDashboardView(APIView):
         ]
 
         # Results / performance trend (last 8 scores)
-        results = StudentResult.objects.filter(student=student).order_by("-id")
+        results = list(StudentResult.objects.filter(student=student).order_by("-id")[:8])
         scores = [r.test + r.exam for r in results]
         avg_score = round(sum(scores) / len(scores), 1) if scores else None
-        performance_trend = scores[:8][::-1]  # oldest→newest for chart
+        # Return oldest→newest dicts so the chart can plot attendance_pct on Y.
+        # test+exam is out of 100, so the value is already a percentage.
+        performance_trend = [
+            {
+                "attendance_pct": round(r.test + r.exam, 1),
+                "label": r.created_at.strftime("%-m/%-d") if r.created_at else str(i + 1),
+            }
+            for i, r in enumerate(reversed(results))
+        ]
 
         # Rank from latest leaderboard snapshot
         rank = None

@@ -498,10 +498,20 @@ class _TrendChart extends StatelessWidget {
     final points = <double>[];
     final labels = <String>[];
     for (var i = 0; i < trend.length; i++) {
-      final pct = (trend[i]['attendance_pct'] as num?)?.toDouble();
+      final item = trend[i];
+      // Handle both dict format {attendance_pct, label} and legacy plain number.
+      final double? pct;
+      final String label;
+      if (item is Map) {
+        pct = (item['attendance_pct'] as num?)?.toDouble();
+        label = (item['label'] as String?) ?? '${i + 1}';
+      } else {
+        pct = (item as num?)?.toDouble();
+        label = '${i + 1}';
+      }
       if (pct != null) {
         points.add(pct.clamp(0, 100).toDouble());
-        labels.add((trend[i]['label'] as String?) ?? '');
+        labels.add(label);
       }
     }
     if (points.length < 2) {
