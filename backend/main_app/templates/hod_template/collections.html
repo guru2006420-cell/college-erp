@@ -1,0 +1,198 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load uzs %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="ice-mobile-page">
+  <section class="ice-hero">
+    <div class="ice-hero__main">
+      <span class="ice-hero__icon" aria-hidden="true"><i class="fas fa-chart-column"></i></span>
+      <div class="ice-hero__copy">
+        <h2 class="ice-hero__title">Collections · {{ period|date:"F Y" }}</h2>
+        <p class="ice-hero__subtitle">
+          {% if is_super_admin %}Expected vs collected tuition across every branch.{% else %}Expected vs collected tuition across your groups.{% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="ice-hero__actions">
+      <a href="{% url 'admin_payments' %}?month={{ month_value }}" class="ice-action"><i class="fas fa-list" aria-hidden="true"></i> Invoices</a>
+    </div>
+  </section>
+
+  {# ── Month picker ──────────────────────────────────────────────────── #}
+  <div class="ice-form-section">
+    <form method="get" class="ice-form-grid" style="align-items:end;">
+      <div>
+        <label class="form-label" for="month-filter">Month</label>
+        <input type="month" id="month-filter" name="month" value="{{ month_value }}"
+               class="form-control" onchange="this.form.submit()">
+      </div>
+    </form>
+  </div>
+
+  {# ── Summary cards ─────────────────────────────────────────────────── #}
+  <div class="ice-form-section" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+    <div style="padding:14px 16px; border:1px solid var(--ice-border,#E4E7EC); border-radius:14px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ice-muted,#64748B);">Expected</div>
+      <div style="font-size:18px; font-weight:800;">{{ expected|uzs }}</div>
+    </div>
+    <div style="padding:14px 16px; border:1px solid rgba(22,163,74,.35); border-radius:14px; background:rgba(22,163,74,.06);">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#16A34A;">Collected</div>
+      <div style="font-size:18px; font-weight:800; color:#16A34A;">{{ collected|uzs }}</div>
+    </div>
+    <div style="padding:14px 16px; border:1px solid rgba(220,38,38,.35); border-radius:14px; background:rgba(220,38,38,.05);">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#DC2626;">Outstanding</div>
+      <div style="font-size:18px; font-weight:800; color:#DC2626;">{{ outstanding|uzs }}</div>
+    </div>
+    <div style="padding:14px 16px; border:1px solid var(--ice-border,#E4E7EC); border-radius:14px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ice-muted,#64748B);">Collection rate</div>
+      <div style="font-size:18px; font-weight:800;">{{ collection_rate }}%</div>
+    </div>
+  </div>
+
+  {% if worst %}
+  <div class="ice-form-section">
+    <div style="display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid rgba(220,38,38,.35); border-radius:14px; background:rgba(220,38,38,.05);">
+      <i class="fas fa-triangle-exclamation" style="color:#DC2626; font-size:18px;" aria-hidden="true"></i>
+      <div>
+        <div style="font-weight:800;">{{ group_by_label }} lagging the most: {{ worst.label }}</div>
+        <div style="font-size:13px; color:var(--ice-muted,#64748B);">
+          {{ worst.outstanding|uzs }} outstanding · {{ worst.rate }}% collected
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Chart: expected vs collected ──────────────────────────────────── #}
+  {% if rows %}
+  <div class="ice-form-section">
+    <div style="padding:16px; border:1px solid var(--ice-border,#E4E7EC); border-radius:16px;">
+      <div style="font-weight:800; margin-bottom:10px;">Expected vs collected by {{ group_by_label|lower }}</div>
+      <div style="position:relative; height:340px;">
+        <canvas id="collections-chart"></canvas>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Ranked breakdown table ────────────────────────────────────────── #}
+  <div class="ice-form-section">
+    <div class="ice-table-scroll" style="overflow-x:auto;">
+      <table class="ice-table" style="width:100%; border-collapse:collapse; min-width:680px;">
+        <thead>
+          <tr style="text-align:left; border-bottom:2px solid var(--ice-border,#E4E7EC); font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--ice-muted,#64748B);">
+            <th style="padding:10px 12px;">{{ group_by_label }}</th>
+            <th style="padding:10px 12px;">Students</th>
+            <th style="padding:10px 12px;">Expected</th>
+            <th style="padding:10px 12px;">Collected</th>
+            <th style="padding:10px 12px;">Outstanding</th>
+            <th style="padding:10px 12px;">Rate</th>
+            <th style="padding:10px 12px;">Overdue</th>
+            <th style="padding:10px 12px;">Partial</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr style="border-bottom:1px solid var(--ice-border,#E4E7EC);">
+            <td style="padding:10px 12px; font-weight:700;">{{ row.label }}</td>
+            <td style="padding:10px 12px;">{{ row.students }}</td>
+            <td style="padding:10px 12px;">{{ row.expected|uzs_plain }}</td>
+            <td style="padding:10px 12px; color:#16A34A; font-weight:700;">{{ row.collected|uzs_plain }}</td>
+            <td style="padding:10px 12px; {% if row.outstanding > 0 %}color:#DC2626; font-weight:700;{% endif %}">{{ row.outstanding|uzs_plain }}</td>
+            <td style="padding:10px 12px;">{{ row.rate }}%</td>
+            <td style="padding:10px 12px;">{% if row.overdue %}<span style="color:#DC2626; font-weight:700;">{{ row.overdue }}</span>{% else %}0{% endif %}</td>
+            <td style="padding:10px 12px;">{{ row.partial }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" style="padding:18px 12px; text-align:center; color:var(--ice-muted,#64748B);">No invoices for this month yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Branch-admin: who needs chasing ───────────────────────────────── #}
+  {% if not is_super_admin and attention %}
+  <div class="ice-form-section">
+    <div style="font-weight:800; margin-bottom:10px;"><i class="fas fa-user-clock" aria-hidden="true"></i> Needs attention — overdue &amp; partial payers</div>
+    <div class="ice-table-scroll" style="overflow-x:auto;">
+      <table class="ice-table" style="width:100%; border-collapse:collapse; min-width:640px;">
+        <thead>
+          <tr style="text-align:left; border-bottom:2px solid var(--ice-border,#E4E7EC); font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--ice-muted,#64748B);">
+            <th style="padding:10px 12px;">Student</th>
+            <th style="padding:10px 12px;">Group</th>
+            <th style="padding:10px 12px;">Status</th>
+            <th style="padding:10px 12px;">Balance</th>
+            <th style="padding:10px 12px;">Due</th>
+            <th style="padding:10px 12px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in attention %}
+          <tr style="border-bottom:1px solid var(--ice-border,#E4E7EC);">
+            <td style="padding:10px 12px; font-weight:700;">{{ inv.student }}</td>
+            <td style="padding:10px 12px;">{{ inv.group.name|default:"—" }}</td>
+            <td style="padding:10px 12px;">
+              {% if inv.is_overdue %}
+              <span class="ice-chip" style="border-color:rgba(220,38,38,.4); color:#DC2626;"><i class="fas fa-exclamation-circle" aria-hidden="true"></i> Overdue</span>
+              {% else %}
+              <span class="ice-chip ice-chip--info"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Partial</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px 12px; color:#DC2626; font-weight:700;">{{ inv.balance|uzs_plain }}</td>
+            <td style="padding:10px 12px;">{{ inv.due_date|date:"d M" }}</td>
+            <td style="padding:10px 12px;"><a href="{% url 'admin_record_payment' inv.id %}" class="ice-action ice-action--sm"><i class="fas fa-coins" aria-hidden="true"></i> Record</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{{ chart_data|json_script:"collections-data" }}
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var el = document.getElementById("collections-chart");
+  if (!el || typeof Chart === "undefined") return;
+  var data = JSON.parse(document.getElementById("collections-data").textContent);
+  if (!data.labels.length) return;
+
+  var dark = document.documentElement.getAttribute("data-theme") === "dark"
+          || document.body.classList.contains("dark-mode");
+  var tick = dark ? "#cbd5e1" : "#334155";
+  var grid = dark ? "rgba(148,163,184,.18)" : "rgba(100,116,139,.16)";
+
+  function fmt(v) { return Number(v).toLocaleString("en-US") + " soʻm"; }
+
+  new Chart(el, {
+    type: "bar",
+    data: {
+      labels: data.labels,
+      datasets: [
+        { label: "Expected", data: data.expected, backgroundColor: "#0B4F8A", borderRadius: 6, maxBarThickness: 46 },
+        { label: "Collected", data: data.collected, backgroundColor: "#16A34A", borderRadius: 6, maxBarThickness: 46 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: tick, font: { weight: "700" } } },
+        tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + fmt(c.parsed.y); } } }
+      },
+      scales: {
+        x: { ticks: { color: tick }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: tick, callback: function (v) { return Number(v).toLocaleString("en-US"); } }, grid: { color: grid } }
+      }
+    }
+  });
+});
+</script>
+{% endblock custom_js %}

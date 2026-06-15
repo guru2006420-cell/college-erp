@@ -1510,8 +1510,8 @@ def add_admin(request):
 @admin_only
 def edit_admin(request, admin_id):
     """Super admins edit an existing admin's credentials (name, email,
-    password). The Recovery Admin's credentials can only be edited by the
-    Recovery Admin itself."""
+    password) — including the recovery account. Changes are saved to that one
+    account; nothing is duplicated."""
     if not branching.is_super_admin(request.user):
         messages.error(request, "Only a super admin can edit admin accounts.")
         return redirect(reverse("admin_home"))
@@ -1521,10 +1521,6 @@ def edit_admin(request, admin_id):
     )
     target = admin_profile.admin
     editing_self = target == request.user
-
-    if branching.is_recovery_admin(target) and not branching.is_recovery_admin(request.user):
-        messages.error(request, "Only the Recovery Admin can edit its own credentials.")
-        return redirect(reverse("manage_admin"))
 
     def _render(form_data):
         return render(request, "hod_template/edit_admin_template.html", {
@@ -1616,7 +1612,7 @@ def manage_admin(request):
         .order_by("admin__first_name", "admin__last_name", "admin__email")
     )
     all_branches = Branch.objects.all().order_by("name")
-    current_is_recovery = branching.is_recovery_admin(request.user)
+    super_admin_count = sum(1 for ap in admin_profiles if ap.is_super_admin)
 
     for admin_profile in admin_profiles:
         assigned_branches = list(admin_profile.branches.all())
@@ -1629,19 +1625,16 @@ def manage_admin(request):
             and admin_profile.id == current_admin_profile.id
         )
         admin_profile.is_recovery = branching.is_recovery_admin(admin_profile.admin)
-        # Only the Recovery Admin may promote/demote super-admin status, and the
-        # Recovery Admin itself can never be demoted.
-        admin_profile.can_toggle_super = (
-            current_is_recovery and not admin_profile.is_recovery
+        # The only protected case is the last remaining super admin — removing or
+        # demoting it would lock everyone out. Otherwise any super admin can
+        # change roles, edit credentials, and delete any account (incl. recovery).
+        admin_profile.is_last_super = (
+            admin_profile.is_super_admin and super_admin_count <= 1
         )
-        # Any super admin may edit credentials, except the Recovery Admin's,
-        # which only the Recovery Admin itself can change.
-        admin_profile.can_edit_credentials = (
-            not admin_profile.is_recovery or admin_profile.is_current_user
-        )
-        # Delete: never the Recovery Admin, never your own account.
+        admin_profile.superadmin_toggle_locked = admin_profile.is_last_super
+        admin_profile.can_edit_credentials = True
         admin_profile.can_delete = (
-            not admin_profile.is_current_user and not admin_profile.is_recovery
+            not admin_profile.is_current_user and not admin_profile.is_last_super
         )
 
     return render(
@@ -1650,7 +1643,6 @@ def manage_admin(request):
         {
             "admin_profiles": admin_profiles,
             "all_branches": all_branches,
-            "current_is_recovery": current_is_recovery,
             "page_title": "Manage Admins",
         },
     )
@@ -1669,8 +1661,14 @@ def delete_admin(request, admin_id):
         messages.error(request, "You cannot delete your own admin account.")
         return redirect(reverse("manage_admin"))
 
-    if branching.is_recovery_admin(admin_profile.admin):
-        messages.error(request, "The Recovery Admin account cannot be deleted.")
+    # The recovery account can be destroyed like any other admin. The only guard
+    # is not wiping out the last super admin and locking everyone out — promote
+    # another admin to super first.
+    if admin_profile.is_super_admin and Admin.objects.filter(is_super_admin=True).count() <= 1:
+        messages.error(
+            request,
+            "Cannot delete the only super admin — promote another admin to super first.",
+        )
         return redirect(reverse("manage_admin"))
 
     name = admin_profile.admin.get_full_name() or admin_profile.admin.email
@@ -1717,20 +1715,19 @@ def update_admin_branch_access(request, admin_id):
     )
     make_super_admin = request.POST.get("is_super_admin") == "on"
     branch_ids = request.POST.getlist("branches")
-    role_changed = make_super_admin != admin_profile.is_super_admin
 
-    # The Recovery Admin is the permanent top-level account — never demote it.
-    if branching.is_recovery_admin(admin_profile.admin) and not make_super_admin:
-        messages.error(request, "The Recovery Admin cannot be demoted.")
-        return redirect(reverse("manage_admin"))
-
-    # Promoting/demoting super-admin status is a Recovery-Admin-only power.
-    if role_changed and not branching.is_recovery_admin(request.user):
-        messages.error(
-            request,
-            "Only the Recovery Admin can change an admin's super-admin status.",
+    # Don't allow demoting the last super admin — that would leave nobody able
+    # to manage admins/branches.
+    if not make_super_admin and admin_profile.is_super_admin:
+        other_super_exists = (
+            Admin.objects.filter(is_super_admin=True).exclude(id=admin_profile.id).exists()
         )
-        return redirect(reverse("manage_admin"))
+        if not other_super_exists:
+            messages.error(
+                request,
+                "Keep at least one super admin — promote another admin before demoting this one.",
+            )
+            return redirect(reverse("manage_admin"))
 
     if not make_super_admin and not branch_ids:
         messages.error(

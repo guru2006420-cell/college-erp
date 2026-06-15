@@ -8,6 +8,31 @@ from . import models
 from . import branching
 
 
+class GroupedNumberInput(forms.TextInput):
+    """Whole-soʻm money input.
+
+    Renders as a text field so admins can type ANY amount (no HTML5 step
+    constraint — a number input with step="1000" only accepts 1, 1001, 2001…,
+    which is why amounts appeared to "need to end in 1"). A small script groups
+    the digits with commas as you type ("200,000"); the separators are stripped
+    here on submit so the value parses cleanly.
+    """
+
+    def __init__(self, attrs=None):
+        base = {"inputmode": "numeric", "data-money": "1", "autocomplete": "off"}
+        if attrs:
+            base.update(attrs)
+        super().__init__(base)
+
+    def value_from_datadict(self, data, files, name):
+        value = super().value_from_datadict(data, files, name)
+        if isinstance(value, str):
+            for sep in (",", " ", " ", " ", "'"):
+                value = value.replace(sep, "")
+            value = value.strip()
+        return value
+
+
 class FormSettings(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(FormSettings, self).__init__(*args, **kwargs)
@@ -338,7 +363,7 @@ class CourseForm(forms.Form):
         max_digits=12,
         label="Monthly fee (UZS soʻm)",
         help_text="Default tuition per month. Groups may override it.",
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "1000", "placeholder": "e.g. 600000"}),
+        widget=GroupedNumberInput(attrs={"class": "form-control", "placeholder": "e.g. 600,000"}),
     )
 
     def __init__(self, *args, instance=None, **kwargs):
@@ -615,8 +640,8 @@ class GroupForm(FormSettings):
         }
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "monthly_fee": forms.NumberInput(
-                attrs={"class": "form-control", "step": "1000", "placeholder": "Blank = course fee"}
+            "monthly_fee": GroupedNumberInput(
+                attrs={"class": "form-control", "placeholder": "Blank = course fee"}
             ),
         }
 
@@ -914,7 +939,7 @@ class RecordPaymentForm(FormSettings):
             "note": "Note (optional)",
         }
         widgets = {
-            "amount": forms.NumberInput(attrs={"class": "form-control", "step": "1000", "min": "1"}),
+            "amount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "e.g. 200,000"}),
             "paid_on": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "note": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. receipt #, payer name"}
@@ -956,8 +981,8 @@ class ManualInvoiceForm(FormSettings):
             "note": "Note (optional)",
         }
         widgets = {
-            "amount": forms.NumberInput(attrs={"class": "form-control", "step": "1000", "min": "0"}),
-            "discount": forms.NumberInput(attrs={"class": "form-control", "step": "1000", "min": "0"}),
+            "amount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "e.g. 600,000"}),
+            "discount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "0"}),
             "due_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "note": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. course books, exam fee"}

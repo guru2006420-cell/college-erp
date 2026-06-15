@@ -20,8 +20,41 @@ from .models import Enrollment, Invoice, Notification
 logger = logging.getLogger(__name__)
 
 
+def format_uzs_number(amount):
+    """Format a whole-soʻm amount the Uzbek way.
+
+    Round thousands/millions use the local "ming"/"million" words (cleaner than
+    a wall of zeros); anything else falls back to comma-grouped digits:
+
+        200000   -> "200 ming"
+        750000   -> "750 ming"
+        10000000 -> "10 million"
+        1500000  -> "1.5 million"
+        200500   -> "200,500"
+        500      -> "500"
+    """
+    try:
+        n = int(round(float(amount)))
+    except (TypeError, ValueError):
+        return str(amount)
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    if n >= 1_000_000:
+        if n % 1_000_000 == 0:
+            body = f"{n // 1_000_000:,} million"
+        elif n % 100_000 == 0:
+            body = f"{n / 1_000_000:.1f} million"
+        else:
+            body = f"{n:,}"
+    elif n >= 1_000 and n % 1_000 == 0:
+        body = f"{n // 1_000:,} ming"
+    else:
+        body = f"{n:,}"
+    return sign + body
+
+
 def _uzs(amount):
-    return f"{amount:,.0f}".replace(",", " ") + " soʻm"
+    return f"{format_uzs_number(amount)} soʻm"
 
 
 def generate_invoices_for_month(period, due_date, user=None, branch=None):

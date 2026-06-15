@@ -61,13 +61,20 @@ def create_default_test_admin(sender, **kwargs):
 
 
 def create_recovery_admin_access(sender, **kwargs):
-    # Provide a stable recovery account when enabled.
+    """Bootstrap a recovery super admin on a brand-new system ONLY.
+
+    The recovery account is seeded from RECOVERY_ADMIN_* env config the first
+    time the system comes up with no admins. After that it is an ordinary super
+    admin account: a super admin can change its email/password or delete it from
+    the UI, and those changes are permanent. We must therefore NEVER recreate or
+    overwrite it once any admin exists — otherwise editing or deleting it would
+    silently come back as a duplicate.
+    """
     recovery_enabled = os.environ.get("RECOVERY_ADMIN_ENABLED", "1").strip().lower() not in {
         "0",
         "false",
         "no",
     }
-    force_password = kwargs.get("force_password", False)
     if not recovery_enabled:
         return
 
@@ -82,33 +89,26 @@ def create_recovery_admin_access(sender, **kwargs):
     if not recovery_email:
         return
 
-    user, created = user_model.objects.get_or_create(
+    # Bootstrap only on a fresh system. The moment any admin (user_type "1")
+    # exists, the recovery account is fully UI-managed and must not be
+    # auto-(re)created — this is what makes credential changes and deletion
+    # ("self destruct") stick instead of reappearing as a duplicate.
+    if user_model.objects.filter(user_type="1").exists():
+        return
+
+    user = user_model.objects.create(
         email=recovery_email,
-        defaults={
-            "first_name": "Recovery",
-            "last_name": "Admin",
-            "user_type": "1",
-            "gender": "M",
-            "address": "Production recovery account",
-            "profile_pic": "",
-            "is_staff": True,
-            "is_superuser": True,
-            "is_active": True,
-        },
+        first_name="Recovery",
+        last_name="Admin",
+        user_type="1",
+        gender="M",
+        address="Production recovery account",
+        is_staff=True,
+        is_superuser=True,
+        is_active=True,
     )
-
-    user.user_type = "1"
-    user.is_staff = True
-    user.is_superuser = True
-    user.is_active = True
-
-    # Apply password only when requested/needed to avoid rotating hashes
-    # and invalidating active sessions on every bootstrap call.
     if recovery_password:
-        if created or force_password:
-            if not user.check_password(recovery_password):
-                user.set_password(recovery_password)
-    elif not user.has_usable_password():
+        user.set_password(recovery_password)
+    else:
         user.set_unusable_password()
-
     user.save()
