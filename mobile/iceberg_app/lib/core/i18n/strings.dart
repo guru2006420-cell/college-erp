@@ -255,6 +255,21 @@ class S {
     'Payment reminders': "Toʻlov eslatmalari",
     'Announcement alerts': "E'lon ogohlantirishlari",
     'Upcoming Lessons': 'Yaqin darslar',
+
+    // ── Profile / settings / misc ────────────────────────────────────────
+    'Account Info': 'Hisob maʼlumotlari',
+    'Security': 'Xavfsizlik',
+    'Theme, language, notifications': 'Mavzu, til, bildirishnomalar',
+    'Tools & Settings': 'Vositalar va sozlamalar',
+    'Log Out': 'Chiqish',
+    'Staff Member': 'Xodim',
+    'Student': 'Talaba',
+    'Upload Photo': 'Rasm yuklash',
+    'Save Avatar': 'Avatarni saqlash',
+    'No vocabulary days yet': 'Hozircha lugʻat kunlari yoʻq',
+    'Create your first vocabulary set with the + button.':
+        '+ tugmasi orqali birinchi lugʻat toʻplamini yarating.',
+    'Word sets for your groups': 'Guruhlaringiz uchun soʻz toʻplamlari',
   };
 
   static const _ru = <String, String>{
@@ -508,6 +523,21 @@ class S {
     'Payment reminders': 'Напоминания о платежах',
     'Announcement alerts': 'Уведомления об объявлениях',
     'Upcoming Lessons': 'Ближайшие занятия',
+
+    // ── Profile / settings / misc ────────────────────────────────────────
+    'Account Info': 'Данные аккаунта',
+    'Security': 'Безопасность',
+    'Theme, language, notifications': 'Тема, язык, уведомления',
+    'Tools & Settings': 'Инструменты и настройки',
+    'Log Out': 'Выйти',
+    'Staff Member': 'Сотрудник',
+    'Student': 'Студент',
+    'Upload Photo': 'Загрузить фото',
+    'Save Avatar': 'Сохранить аватар',
+    'No vocabulary days yet': 'Пока нет словарных дней',
+    'Create your first vocabulary set with the + button.':
+        'Создайте первый набор слов с помощью кнопки +.',
+    'Word sets for your groups': 'Наборы слов для ваших групп',
   };
 
   static const _ko = <String, String>{
@@ -758,6 +788,21 @@ class S {
     'Payment reminders': '결제 알림',
     'Announcement alerts': '공지 알림',
     'Upcoming Lessons': '예정 수업',
+
+    // ── Profile / settings / misc ────────────────────────────────────────
+    'Account Info': '계정 정보',
+    'Security': '보안',
+    'Theme, language, notifications': '테마, 언어, 알림',
+    'Tools & Settings': '도구 및 설정',
+    'Log Out': '로그아웃',
+    'Staff Member': '직원',
+    'Student': '학생',
+    'Upload Photo': '사진 업로드',
+    'Save Avatar': '아바타 저장',
+    'No vocabulary days yet': '아직 단어장 날짜가 없습니다',
+    'Create your first vocabulary set with the + button.':
+        '+ 버튼으로 첫 단어 세트를 만드세요.',
+    'Word sets for your groups': '그룹 단어 세트',
   };
 
   /// Translate [key] (the English string doubles as the key).
