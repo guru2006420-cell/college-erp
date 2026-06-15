@@ -87,7 +87,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _init();
   }
 
-  final _storage = const FlutterSecureStorage();
+  // encryptedSharedPreferences avoids the raw Android Keystore path, which is
+  // known to hang or fail on some Xiaomi/MIUI and Huawei/EMUI devices and could
+  // otherwise strand the app on the splash screen at startup.
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
   final _api = ApiClient.instance;
 
   Future<void> _init() async {
@@ -97,22 +102,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final minDisplay = Future<void>.delayed(
       const Duration(milliseconds: 1800),
     );
+
+    IceUser? user;
     try {
-      await _api.loadTokens().timeout(const Duration(seconds: 4));
-      final cached = await _storage
-          .read(key: 'user_json')
-          .timeout(const Duration(seconds: 4));
-      final token = await _api.accessToken;
-      await minDisplay;
-      if (cached != null && token != null) {
-        state = AuthState.auth(IceUser.fromJson(jsonDecode(cached)));
-        return;
-      }
+      // One hard cap around ALL secure-storage work. On some Android devices
+      // (notably Xiaomi/MIUI and Huawei/EMUI, common in our user base) the
+      // Keystore-backed storage can hang on first access — without an overall
+      // timeout the app would sit on the splash forever and never reach login.
+      user = await _loadCachedUser().timeout(const Duration(seconds: 5));
     } catch (_) {
-      // Fall through to unauthenticated — the user can simply log in again.
+      // Any failure (timeout, corrupt cache, storage error) → treat as logged
+      // out. The user can simply sign in again.
+      user = null;
     }
+
     await minDisplay;
-    state = AuthState.unauth();
+    state = user != null ? AuthState.auth(user) : AuthState.unauth();
+  }
+
+  /// Read the persisted session, returning the cached user when a valid token
+  /// is present. Never used without an enclosing timeout (see [_init]).
+  Future<IceUser?> _loadCachedUser() async {
+    await _api.loadTokens();
+    final cached = await _storage.read(key: 'user_json');
+    final token = await _api.accessToken;
+    if (cached != null && token != null) {
+      return IceUser.fromJson(jsonDecode(cached));
+    }
+    return null;
   }
 
   void _handleSessionExpired() {
