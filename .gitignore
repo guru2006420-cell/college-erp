@@ -64,5 +64,6 @@ test-results/
 
 # Large pre-built APKs (use GitHub Releases instead)
 *.apk
-# Allow the production download copy served by Django
+# Allow the production download copies served by Django
 !web/downloads/iceberg.apk
+!web/downloads/iceberg-32bit.apk

@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from django.http import FileResponse, Http404, JsonResponse
 from django.conf import settings
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -66,6 +67,37 @@ def download_apk(request):
     )
     response["Cache-Control"] = "no-cache"
     return response
+
+
+def download_apk_32(request):
+    """Serve the 32-bit (armeabi-v7a) APK for older Android devices."""
+    apk_path = os.path.join(DOWNLOADS_DIR, "iceberg-32bit.apk")
+    if not os.path.isfile(apk_path):
+        raise Http404("32-bit APK not yet available")
+    response = FileResponse(
+        open(apk_path, "rb"),
+        content_type="application/vnd.android.package-archive",
+        as_attachment=True,
+        filename="ICEBERG-32bit.apk",
+    )
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+def download_page(request):
+    """Landing page with installation instructions for the Android APK."""
+    apk_path = os.path.join(DOWNLOADS_DIR, "iceberg.apk")
+    apk_32_path = os.path.join(DOWNLOADS_DIR, "iceberg-32bit.apk")
+    apk_size_mb = ""
+    apk_32_size_mb = ""
+    if os.path.isfile(apk_path):
+        apk_size_mb = f"{os.path.getsize(apk_path) / 1_048_576:.0f}"
+    if os.path.isfile(apk_32_path):
+        apk_32_size_mb = f"{os.path.getsize(apk_32_path) / 1_048_576:.0f}"
+    return render(request, "main_app/download.html", {
+        "apk_size_mb": apk_size_mb,
+        "apk_32_size_mb": apk_32_size_mb,
+    })
 
 
 # ---------------------------------------------------------------------------

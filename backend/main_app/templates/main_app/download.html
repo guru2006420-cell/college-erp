@@ -1,0 +1,412 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ICEBERG — Download App</title>
+  <link rel="shortcut icon" href="{% static 'image/favicon1.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #f0f4f8;
+      --card:     #ffffff;
+      --primary:  #0C1F45;
+      --cyan:     #06B6D4;
+      --text:     #111827;
+      --muted:    #64748b;
+      --border:   #e2e8f0;
+      --success:  #10b981;
+      --warn:     #f59e0b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:    #0a0f1a;
+        --card:  #111827;
+        --text:  #f1f5f9;
+        --muted: #94a3b8;
+        --border:#1e293b;
+      }
+    }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+    .logo-wrap { margin-bottom: 2rem; text-align: center; }
+    .logo-wrap img { height: 40px; }
+    .logo-name { font-size: 1.5rem; font-weight: 800; color: var(--primary); letter-spacing: -0.5px; margin-top: 0.5rem; }
+    @media (prefers-color-scheme: dark) { .logo-name { color: var(--cyan); } }
+
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+
+    .download-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      background: linear-gradient(135deg, var(--primary), #1a3a6e);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: opacity .15s;
+      margin-bottom: 0.75rem;
+    }
+    .download-btn:hover { opacity: .88; }
+    .download-btn svg { flex-shrink: 0; }
+
+    .meta { font-size: 0.75rem; color: var(--muted); text-align: center; }
+    .meta span { margin: 0 0.5rem; }
+
+    /* Steps */
+    .steps-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--warn);
+      margin-bottom: 1rem;
+    }
+    ol.steps { list-style: none; counter-reset: step; }
+    ol.steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.875rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    ol.steps li::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      background: var(--cyan);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Tab switcher */
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .tab {
+      padding: 0.375rem 0.875rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Lang toggle */
+    .lang-toggle {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1.25rem;
+    }
+    .lang-btn {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--muted);
+      font-family: inherit;
+    }
+    .lang-btn:hover { color: var(--text); }
+
+    .uz { display: none; }
+    body.lang-uz .en { display: none; }
+    body.lang-uz .uz { display: block; }
+
+    .req-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .req-list li { font-size: 0.875rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
+    .req-list li::before { content: "✓"; color: var(--success); font-weight: 700; }
+
+    kbd {
+      background: var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+    .note {
+      background: rgba(6,182,212,.08);
+      border-left: 3px solid var(--cyan);
+      border-radius: 0 8px 8px 0;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-wrap">
+    <img src="{% static 'image/logo.png' %}" alt="ICEBERG" onerror="this.style.display='none'">
+    <div class="logo-name">ICEBERG</div>
+  </div>
+
+  <!-- Download card -->
+  <div class="card">
+    <div class="lang-toggle">
+      <button class="lang-btn" onclick="toggleLang(this)">O'zbek / English</button>
+    </div>
+
+    <h2 class="en">Download ICEBERG App</h2>
+    <h2 class="uz">ICEBERG ilovasini yuklab oling</h2>
+    <p class="subtitle en">For Android 7.0 and above</p>
+    <p class="subtitle uz">Android 7.0 va undan yuqori versiyalar uchun</p>
+
+    <a href="/download/app.apk" class="download-btn" id="dl-btn">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span class="en">Download APK (64-bit)</span>
+      <span class="uz">APK yuklab olish (64-bit)</span>
+    </a>
+    <p class="meta">
+      <span class="en">Android only</span>
+      <span class="uz">Faqat Android</span>
+      <span>•</span>
+      <span>~{{ apk_size_mb }} MB</span>
+      <span>•</span>
+      <span class="en">For phones made after 2018</span>
+      <span class="uz">2018 yildan keyingi telefonlar uchun</span>
+    </p>
+
+    {% if apk_32_size_mb %}
+    <a href="/download/app-32bit.apk" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.625rem 1.5rem;background:transparent;border:1.5px solid var(--border);color:var(--muted);font-size:.875rem;font-weight:600;border-radius:12px;text-decoration:none;margin-top:.75rem;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span class="en">Download APK (32-bit, ~{{ apk_32_size_mb }} MB) — for older phones</span>
+      <span class="uz">APK yuklab olish (32-bit, ~{{ apk_32_size_mb }} MB) — eski telefonlar uchun</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Installation guide -->
+  <div class="card">
+    <div class="steps-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span class="en">How to install (required for all devices)</span>
+      <span class="uz">Qanday o'rnatish kerak (barcha qurilmalar uchun)</span>
+    </div>
+
+    <!-- Device tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('general', this)">
+        <span class="en">General</span><span class="uz">Umumiy</span>
+      </button>
+      <button class="tab" onclick="showTab('xiaomi', this)">Xiaomi / MIUI</button>
+      <button class="tab" onclick="showTab('huawei', this)">Huawei / Honor</button>
+      <button class="tab" onclick="showTab('samsung', this)">Samsung</button>
+    </div>
+
+    <!-- General -->
+    <div class="tab-panel active" id="tab-general">
+      <ol class="steps">
+        <li>
+          <div>
+            <span class="en">Tap the <strong>Download APK</strong> button above and wait for the download to finish.</span>
+            <span class="uz">Yuqoridagi <strong>APK yuklab olish</strong> tugmasini bosing va yuklab olish tugashini kuting.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Open the downloaded file. Your browser or file manager will show a notification — tap it to open.</span>
+            <span class="uz">Yuklab olingan faylni oching. Brauzer yoki fayl menejeri bildirishnoma ko'rsatadi — uni bosing.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Android will ask permission to install apps from this source. Tap <kbd>Settings</kbd>, then enable <kbd>Allow from this source</kbd>, and go back.</span>
+            <span class="uz">Android bu manbadan ilovalar o'rnatishga ruxsat so'raydi. <kbd>Sozlamalar</kbd>ga o'ting, <kbd>Bu manbaga ruxsat berish</kbd>ni yoqing va qaytib keling.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Tap <kbd>Install</kbd> and wait a few seconds. Then tap <kbd>Open</kbd>.</span>
+            <span class="uz"><kbd>O'rnatish</kbd>ni bosing va bir necha soniya kuting. Keyin <kbd>Ochish</kbd>ni bosing.</span>
+          </div>
+        </li>
+      </ol>
+      <div class="note en">
+        On Android 7 and below, go to <strong>Settings → Security → Unknown sources</strong> and enable it before downloading.
+      </div>
+      <div class="note uz">
+        Android 7 va undan pastda: yuklab olishdan oldin <strong>Sozlamalar → Xavfsizlik → Noma'lum manbalar</strong>ni yoqing.
+      </div>
+    </div>
+
+    <!-- Xiaomi -->
+    <div class="tab-panel" id="tab-xiaomi">
+      <ol class="steps">
+        <li>
+          <div>
+            <span class="en">Download the APK using the button above.</span>
+            <span class="uz">Yuqoridagi tugma orqali APK ni yuklab oling.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">MIUI will show a security warning. Tap <kbd>Install anyway</kbd> or <kbd>Proceed</kbd>. Do <em>not</em> tap "Send for review" — that cancels the install.</span>
+            <span class="uz">MIUI xavfsizlik ogohlantirishini ko'rsatadi. <kbd>Baribir o'rnatish</kbd> yoki <kbd>Davom etish</kbd>ni bosing. "Ko'rib chiqish uchun yuborish"ni <em>bosmang</em>.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">If prompted, go to <strong>Settings → Privacy → Install unknown apps</strong>, choose your browser (e.g. Chrome), and enable <kbd>Allow from this source</kbd>.</span>
+            <span class="uz">So'ralsa, <strong>Sozlamalar → Maxfiylik → Noma'lum ilovalarni o'rnatish</strong>ga o'ting, brauzeringizni (masalan Chrome) tanlang va <kbd>Bu manbaga ruxsat berish</kbd>ni yoqing.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Return to the download and tap <kbd>Install</kbd>. The app will appear on your home screen.</span>
+            <span class="uz">Yuklab olishga qayting va <kbd>O'rnatish</kbd>ni bosing. Ilova bosh ekranda paydo bo'ladi.</span>
+          </div>
+        </li>
+      </ol>
+      <div class="note en">MIUI's cloud scanner may slow the install by a few seconds — this is normal.</div>
+      <div class="note uz">MIUI bulut skaneri o'rnatishni bir necha soniya sekinlashtirishi mumkin — bu normal holat.</div>
+    </div>
+
+    <!-- Huawei -->
+    <div class="tab-panel" id="tab-huawei">
+      <ol class="steps">
+        <li>
+          <div>
+            <span class="en">Download the APK using the button above.</span>
+            <span class="uz">Yuqoridagi tugma orqali APK ni yuklab oling.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Open the downloaded APK from <strong>Files</strong> → <strong>Downloads</strong>.</span>
+            <span class="uz">Yuklab olingan APK ni <strong>Fayllar</strong> → <strong>Yuklamalar</strong> dan oching.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">If EMUI blocks the install, go to <strong>Settings → Apps → Special access → Install unknown apps</strong>, select <strong>Files</strong> or your browser, and enable it.</span>
+            <span class="uz">EMUI o'rnatishni bloklasa, <strong>Sozlamalar → Ilovalar → Maxsus kirish → Noma'lum ilovalarni o'rnatish</strong>ga o'ting, <strong>Fayllar</strong> yoki brauzeringizni tanlang va yoqing.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Tap <kbd>Install</kbd>. If Phone Manager warns you, tap <kbd>Install anyway</kbd>.</span>
+            <span class="uz"><kbd>O'rnatish</kbd>ni bosing. Telefon menejeri ogohlantirsa, <kbd>Baribir o'rnatish</kbd>ni bosing.</span>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <!-- Samsung -->
+    <div class="tab-panel" id="tab-samsung">
+      <ol class="steps">
+        <li>
+          <div>
+            <span class="en">Download the APK using the button above.</span>
+            <span class="uz">Yuqoridagi tugma orqali APK ni yuklab oling.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Open <strong>My Files</strong> → <strong>Downloads</strong> and tap the APK.</span>
+            <span class="uz"><strong>Mening fayllarim</strong> → <strong>Yuklamalar</strong>ni oching va APK ni bosing.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">Samsung will ask about unknown apps. Go to <strong>Settings → Biometrics and security → Install unknown apps</strong>, select <strong>My Files</strong>, and allow.</span>
+            <span class="uz">Samsung noma'lum ilovalar haqida so'raydi. <strong>Sozlamalar → Biometrik ma'lumotlar va xavfsizlik → Noma'lum ilovalarni o'rnatish</strong>ga o'ting, <strong>Mening fayllarim</strong>ni tanlang va ruxsat bering.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <span class="en">If Play Protect warns you, tap <kbd>Install anyway</kbd>. This app is safe.</span>
+            <span class="uz">Play Protect ogohlantirsa, <kbd>Baribir o'rnatish</kbd>ni bosing. Bu ilova xavfsiz.</span>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Requirements -->
+  <div class="card">
+    <h2 class="en" style="margin-bottom:1rem">System requirements</h2>
+    <h2 class="uz" style="margin-bottom:1rem">Tizim talablari</h2>
+    <ul class="req-list">
+      <li><span class="en">Android 7.0 or higher</span><span class="uz">Android 7.0 yoki undan yuqori</span></li>
+      <li><span class="en">~{{ apk_size_mb }} MB free storage</span><span class="uz">~{{ apk_size_mb }} MB bo'sh xotira</span></li>
+      <li><span class="en">Internet connection</span><span class="uz">Internet aloqasi</span></li>
+    </ul>
+    <div class="note" style="margin-top:1rem">
+      <span class="en">Having trouble? Contact your administrator or class teacher.</span>
+      <span class="uz">Muammo bormi? Administrator yoki o'qituvchingizga murojaat qiling.</span>
+    </div>
+  </div>
+
+  <script>
+    function showTab(id, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      btn.classList.add('active');
+    }
+    function toggleLang(btn) {
+      const isUz = document.body.classList.toggle('lang-uz');
+      btn.textContent = isUz ? 'English / O\'zbek' : 'O\'zbek / English';
+    }
+  </script>
+</body>
+</html>
