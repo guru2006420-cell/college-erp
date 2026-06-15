@@ -1743,6 +1743,7 @@ class StudentMobileApiTests(TestCase):
         from main_app.models import (
             Invoice,
             Notification,
+            StudentResult,
             VocabularyDay,
             VocabularyDayWord,
         )
@@ -1769,6 +1770,18 @@ class StudentMobileApiTests(TestCase):
             due_date=date.today() + timedelta(days=5),
         )
 
+        # Performance trend = last 8 graded results (one per group, since
+        # StudentResult is unique per student+group). Seed 9 groups+results
+        # to verify the dashboard caps the trend at the 8 most recent.
+        for i in range(9):
+            grp = Group.objects.create(
+                name=f"Trend Group {i}", course=self.course, teacher=self.teacher
+            )
+            Enrollment.objects.create(student=self.student, group=grp, is_active=True)
+            StudentResult.objects.create(
+                student=self.student, group=grp, test=30, exam=50
+            )
+
         res = self.api.get("/api/v1/student/home/")
         self.assertEqual(res.status_code, 200)
         body = res.json()
@@ -1777,6 +1790,7 @@ class StudentMobileApiTests(TestCase):
         self.assertEqual(body["unread_notifications"], 1)
         self.assertEqual(body["new_vocab_words"], 1)
         self.assertEqual(len(body["performance_trend"]), 8)
+        self.assertEqual(body["performance_trend"][0]["attendance_pct"], 80.0)
         self.assertEqual(body["balance_due"], 1_000_000)
         self.assertIsNotNone(body["balance_due_date"])
 
