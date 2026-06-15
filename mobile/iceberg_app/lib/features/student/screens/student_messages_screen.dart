@@ -376,6 +376,7 @@ class _StudentChatScreenState extends ConsumerState<StudentChatScreen> {
     return ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      cacheExtent: 600,
       itemCount: _messages.length,
       itemBuilder: (_, i) => _Bubble(message: _messages[i]),
     );

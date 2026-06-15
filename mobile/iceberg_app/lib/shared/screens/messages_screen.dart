@@ -401,6 +401,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                 : ListView.builder(
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    cacheExtent: 600,
                     itemCount: _messages.length,
                     itemBuilder: (_, i) =>
                         _MessageBubble(message: _messages[i] as Map),

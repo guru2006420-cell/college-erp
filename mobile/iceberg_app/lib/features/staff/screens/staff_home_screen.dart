@@ -400,6 +400,7 @@ class _Dashboard extends ConsumerWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
+                cacheExtent: 600,
                 itemCount: stories.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (_, i) =>
@@ -770,6 +771,9 @@ class _PulseCard extends StatelessWidget {
                   height: 170,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  cacheWidth: (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .ceil(),
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),

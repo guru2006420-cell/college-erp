@@ -78,13 +78,14 @@ class IceNavBar extends StatelessWidget {
       );
     }
 
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Color(0x18000000),
-            blurRadius: 16,
+            blurRadius: 8,
             offset: Offset(0, -2),
           ),
         ],
@@ -106,7 +107,7 @@ class IceNavBar extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }
 

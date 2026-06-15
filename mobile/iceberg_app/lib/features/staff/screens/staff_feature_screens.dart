@@ -261,6 +261,7 @@ class _RosterSheet extends ConsumerWidget {
                 return ListView.separated(
                   controller: controller,
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  cacheExtent: 600,
                   itemCount: students.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {

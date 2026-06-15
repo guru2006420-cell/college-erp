@@ -137,7 +137,8 @@ class _StaffBottomNav extends ConsumerWidget {
       (Icons.person_rounded, 'Profile'),
     ];
 
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       decoration: BoxDecoration(
         color: t.card,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
@@ -146,8 +147,8 @@ class _StaffBottomNav extends ConsumerWidget {
           BoxShadow(
             color:
                 Colors.black.withValues(alpha: t.isDark ? 0.35 : 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
@@ -218,6 +219,6 @@ class _StaffBottomNav extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

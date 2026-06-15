@@ -532,6 +532,8 @@ class _IceUserAvatarInline extends StatelessWidget {
     }
 
     if (hasPhoto) {
+      final dpr = MediaQuery.devicePixelRatioOf(context).ceil();
+      final px = (radius * 2 * dpr).ceil();
       return CircleAvatar(
         radius: radius,
         backgroundColor: bg,
@@ -541,6 +543,8 @@ class _IceUserAvatarInline extends StatelessWidget {
             width: radius * 2,
             height: radius * 2,
             fit: BoxFit.cover,
+            cacheWidth: px,
+            cacheHeight: px,
             errorBuilder: (_, __, ___) => fallback(),
           ),
         ),
