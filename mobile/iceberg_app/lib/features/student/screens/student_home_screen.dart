@@ -522,7 +522,7 @@ class _TrendChart extends StatelessWidget {
     }
     return LineChart(
       LineChartData(
-        backgroundColor: t.card,
+        backgroundColor: Colors.transparent,
         minY: 0,
         maxY: 100,
         gridData: FlGridData(
