@@ -26,6 +26,9 @@ on:
 #   FIREBASE_SERVICE_ACCOUNT   — Service account JSON key (entire file content)
 #                                Google Cloud Console → IAM → Service Accounts
 #                                Role: Firebase App Distribution Admin
+#
+#   FIREBASE_TESTERS           — Comma-separated tester emails to notify
+#                                Example: student1@gmail.com,teacher@school.com
 # ---------------------------------------------------------------------------
 
 jobs:
@@ -73,6 +76,7 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          testers: ${{ secrets.FIREBASE_TESTERS }}
           file: mobile/iceberg_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           releaseNotes: "${{ steps.notes.outputs.text }} [arm64]"
 
@@ -81,6 +85,7 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          testers: ${{ secrets.FIREBASE_TESTERS }}
           file: mobile/iceberg_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           releaseNotes: "${{ steps.notes.outputs.text }} [arm32]"
 
