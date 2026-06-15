@@ -67,7 +67,11 @@
             {% endif %}
           </strong>
           <small class="ice-afc-email">{{ ap.admin.email }}</small>
-          {% if ap.is_super_admin %}
+          {% if ap.is_recovery %}
+          <span class="ice-manage-chip ice-manage-chip--success ice-afc-role-chip">
+            <i class="fas fa-crown" aria-hidden="true"></i><span>Recovery Admin · all branches</span>
+          </span>
+          {% elif ap.is_super_admin %}
           <span class="ice-manage-chip ice-manage-chip--success ice-afc-role-chip">
             <i class="fas fa-globe" aria-hidden="true"></i><span>Super admin · all branches</span>
           </span>
@@ -77,30 +81,46 @@
           </span>
           {% endif %}
         </div>
-        {% if ap.can_delete %}
-        <a href="{% url 'delete_admin' ap.id %}"
-           class="ice-afc-delete"
-           data-confirm-post="Delete admin &quot;{{ ap.admin.get_full_name|default:ap.admin.email }}&quot;? Their account will be permanently removed. This cannot be undone."
-           title="Delete admin account"
-           aria-label="Delete {{ ap.admin.get_full_name|default:ap.admin.email }}">
-          <i class="fas fa-trash" aria-hidden="true"></i>
-        </a>
-        {% else %}
-        <span class="ice-afc-delete ice-afc-delete--locked"
-              title="{% if ap.is_current_user %}Cannot delete your own account{% else %}Cannot delete the only super admin{% endif %}"
-              aria-label="Delete disabled">
-          <i class="fas fa-lock" aria-hidden="true"></i>
-        </span>
-        {% endif %}
+        <div class="ice-afc-actions">
+          {% if ap.can_edit_credentials %}
+          <a href="{% url 'edit_admin' ap.id %}"
+             class="ice-afc-edit"
+             title="Edit credentials (name, email, password)"
+             aria-label="Edit {{ ap.admin.get_full_name|default:ap.admin.email }}">
+            <i class="fas fa-pen" aria-hidden="true"></i>
+          </a>
+          {% endif %}
+          {% if ap.can_delete %}
+          <a href="{% url 'delete_admin' ap.id %}"
+             class="ice-afc-delete"
+             data-confirm-post="Delete admin &quot;{{ ap.admin.get_full_name|default:ap.admin.email }}&quot;? Their account will be permanently removed. This cannot be undone."
+             title="Delete admin account"
+             aria-label="Delete {{ ap.admin.get_full_name|default:ap.admin.email }}">
+            <i class="fas fa-trash" aria-hidden="true"></i>
+          </a>
+          {% else %}
+          <span class="ice-afc-delete ice-afc-delete--locked"
+                title="{% if ap.is_current_user %}Cannot delete your own account{% elif ap.is_recovery %}The Recovery Admin cannot be deleted{% else %}Cannot delete this account{% endif %}"
+                aria-label="Delete disabled">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+          </span>
+          {% endif %}
+        </div>
       </div>
 
-      {# ── Branch access form ── #}
-      {% if ap.superadmin_toggle_locked %}
-      {# Sole super admin: nothing here is changeable — show a quiet note instead of a dead form #}
+      {# ── Role / branch access ── #}
+      {% if ap.is_recovery %}
       <div class="ice-afc-form">
         <div class="ice-afc-locked-note">
-          <i class="fas fa-lock" aria-hidden="true"></i>
-          <span>Sole super admin with access to all branches. Promote another admin first to change this role.</span>
+          <i class="fas fa-crown" aria-hidden="true"></i>
+          <span>Recovery Admin — permanent top-level account. Manages every branch and promotes other admins. Cannot be demoted or deleted.</span>
+        </div>
+      </div>
+      {% elif ap.is_super_admin and not ap.can_toggle_super %}
+      <div class="ice-afc-form">
+        <div class="ice-afc-locked-note">
+          <i class="fas fa-globe" aria-hidden="true"></i>
+          <span>Super admin — manages all branches. Only the Recovery Admin can change this role.</span>
         </div>
       </div>
       {% else %}
@@ -109,6 +129,7 @@
             class="ice-afc-form">
         {% csrf_token %}
 
+        {% if ap.can_toggle_super %}
         <label class="ice-admin-scope-toggle">
           <input type="checkbox" name="is_super_admin" data-superadmin-toggle
                  {% if ap.is_super_admin %}checked{% endif %}>
@@ -117,6 +138,7 @@
             <small>Can see and manage every branch.</small>
           </span>
         </label>
+        {% endif %}
 
         {# Branch picker only matters for branch admins — hidden while super admin is on #}
         <div class="ice-admin-access-branches" aria-label="Assigned branches"

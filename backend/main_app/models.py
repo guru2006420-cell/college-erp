@@ -105,20 +105,10 @@ class Admin(models.Model):
         help_text="Branches this admin manages. Ignored when is_super_admin is True.",
     )
 
-    def clean(self):
-        from django.core.exceptions import ValidationError
-        if self.is_super_admin:
-            conflict = (
-                Admin.objects.filter(is_super_admin=True)
-                .exclude(pk=self.pk)
-                .first()
-            )
-            if conflict:
-                name = conflict.admin.get_full_name() or conflict.admin.email
-                raise ValidationError(
-                    f"Only one super admin is allowed. {name} is already the super admin. "
-                    "Demote them first before promoting another admin."
-                )
+    # Multiple super admins are allowed: the Recovery Admin can promote any
+    # number of admins to super admin. The seeded Recovery Admin is the
+    # permanent top-level account (see branching.is_recovery_admin) and is
+    # protected from demotion/deletion at the view layer.
 
     def __str__(self):
         return f"{self.admin.first_name} {self.admin.last_name}".strip() or self.admin.email

@@ -767,9 +767,15 @@
 
 .ice-afc-header {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 40px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: flex-start;
+}
+
+.ice-afc-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ice-afc-avatar {
@@ -841,6 +847,31 @@
 .ice-afc-role-chip {
   margin-top: 2px;
   max-width: 100%;
+}
+
+/* Edit button on the admin card */
+.ice-afc-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 12px;
+  color: var(--ice-manage-navy);
+  background: rgba(56, 189, 248, 0.10);
+  border: 1.5px solid rgba(56, 189, 248, 0.22);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background .14s, border-color .14s;
+}
+
+.ice-afc-edit:hover,
+.ice-afc-edit:focus {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: var(--ice-manage-navy);
+  text-decoration: none;
 }
 
 /* Delete button on the admin card */
@@ -916,7 +947,7 @@
     border-radius: 20px;
   }
   .ice-afc-header {
-    grid-template-columns: 48px minmax(0, 1fr) 36px;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     gap: 10px;
   }
   .ice-afc-avatar {
@@ -926,6 +957,7 @@
     border-radius: 14px;
     font-size: 16px;
   }
+  .ice-afc-edit,
   .ice-afc-delete {
     width: 32px;
     height: 32px;
