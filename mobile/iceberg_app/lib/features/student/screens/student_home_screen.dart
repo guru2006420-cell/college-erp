@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
-import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -483,6 +484,10 @@ class _Dashboard extends ConsumerWidget {
 }
 
 // ─── Trend chart ─────────────────────────────────────────────────────────────
+// Custom-painted sparkline. We previously used fl_chart here, but its CustomPaint
+// backend intermittently rendered a flat grey rectangle on iOS Safari / web,
+// which no amount of backgroundColor tweaking fixed. Painting it ourselves is
+// lighter (better scrolling) and renders identically on every platform.
 class _TrendChart extends StatelessWidget {
   final List trend;
   const _TrendChart({required this.trend});
@@ -490,12 +495,16 @@ class _TrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.ice;
-    final spots = <FlSpot>[];
+    final points = <double>[];
+    final labels = <String>[];
     for (var i = 0; i < trend.length; i++) {
       final pct = (trend[i]['attendance_pct'] as num?)?.toDouble();
-      if (pct != null) spots.add(FlSpot(i.toDouble(), pct));
+      if (pct != null) {
+        points.add(pct.clamp(0, 100).toDouble());
+        labels.add((trend[i]['label'] as String?) ?? '');
+      }
     }
-    if (spots.length < 2) {
+    if (points.length < 2) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -520,79 +529,133 @@ class _TrendChart extends StatelessWidget {
         ),
       );
     }
-    return LineChart(
-      LineChartData(
-        backgroundColor: Colors.transparent,
-        minY: 0,
-        maxY: 100,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 25,
-          getDrawingHorizontalLine: (_) =>
-              FlLine(color: t.stroke, strokeWidth: 1),
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(),
-          topTitles: const AxisTitles(),
-          rightTitles: const AxisTitles(),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 26,
-              getTitlesWidget: (v, _) {
-                final i = v.toInt();
-                if (i < 0 || i >= trend.length) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    trend[i]['label'] ?? '',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: t.textLow,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            curveSmoothness: 0.32,
-            barWidth: 3,
-            color: t.accent,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
-                radius: 3.5,
-                color: Colors.white,
-                strokeWidth: 2,
-                strokeColor: t.accent,
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  t.accent.withValues(alpha: 0.28),
-                  t.accent.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ],
+    return CustomPaint(
+      size: Size.infinite,
+      painter: _SparklinePainter(
+        points: points,
+        labels: labels,
+        line: t.accent,
+        grid: t.stroke,
+        labelColor: t.textLow,
+        dotFill: t.card,
       ),
-      duration: const Duration(milliseconds: 400),
     );
   }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> points; // each 0..100
+  final List<String> labels;
+  final Color line;
+  final Color grid;
+  final Color labelColor;
+  final Color dotFill;
+
+  _SparklinePainter({
+    required this.points,
+    required this.labels,
+    required this.line,
+    required this.grid,
+    required this.labelColor,
+    required this.dotFill,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const labelBand = 22.0;
+    final chartH = size.height - labelBand;
+    if (chartH <= 0) return;
+    final n = points.length;
+    final dx = n > 1 ? size.width / (n - 1) : size.width;
+
+    Offset pos(int i) =>
+        Offset(i * dx, chartH - (points[i] / 100) * chartH);
+
+    // Horizontal grid lines at 0/25/50/75/100.
+    final gridPaint = Paint()
+      ..color = grid
+      ..strokeWidth = 1;
+    for (var g = 0; g <= 100; g += 25) {
+      final y = chartH - (g / 100) * chartH;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    // Smooth curve through the points.
+    final path = Path()..moveTo(pos(0).dx, pos(0).dy);
+    for (var i = 0; i < n - 1; i++) {
+      final p0 = pos(i);
+      final p1 = pos(i + 1);
+      final midX = (p0.dx + p1.dx) / 2;
+      path.cubicTo(midX, p0.dy, midX, p1.dy, p1.dx, p1.dy);
+    }
+
+    // Gradient fill below the curve.
+    final fillPath = Path.from(path)
+      ..lineTo(pos(n - 1).dx, chartH)
+      ..lineTo(pos(0).dx, chartH)
+      ..close();
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            line.withValues(alpha: 0.28),
+            line.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, chartH)),
+    );
+
+    // The line itself.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = line
+        ..strokeWidth = 3
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Dots.
+    final dotInner = Paint()..color = dotFill;
+    final dotRing = Paint()
+      ..color = line
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    for (var i = 0; i < n; i++) {
+      final p = pos(i);
+      canvas.drawCircle(p, 3.5, dotInner);
+      canvas.drawCircle(p, 3.5, dotRing);
+    }
+
+    // Bottom labels.
+    for (var i = 0; i < n; i++) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: labels[i],
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: labelColor,
+          ),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      )..layout();
+      final px = (pos(i).dx - tp.width / 2).clamp(0.0, size.width - tp.width);
+      tp.paint(canvas, Offset(px, chartH + 6));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter old) =>
+      !listEquals(old.points, points) ||
+      !listEquals(old.labels, labels) ||
+      old.line != line ||
+      old.grid != grid ||
+      old.labelColor != labelColor ||
+      old.dotFill != dotFill;
 }
 
 // ─── Campus Pulse card ───────────────────────────────────────────────────────
