@@ -231,11 +231,17 @@ body {
   text-align: center;
 }
 
-/* Profile avatar in navbar — small clean circle */
+/* Brand logo in navbar — fixed round badge (same for every role) */
 .navbar-user-avatar {
-  width: 36px !important;
-  height: 36px !important;
-  min-height: unset !important;
+  /* Force a perfect circle: width AND height (plus their mins) must match,
+     otherwise the global 44px min-width touch-target rule stretches it into
+     a 44x36 oval. */
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
   aspect-ratio: 1 / 1 !important;
   border-radius: 50% !important;
   background: linear-gradient(135deg, var(--navy), var(--navy-mid)) !important;
@@ -256,8 +262,8 @@ body {
 }
 .navbar-user-avatar:hover { opacity: .85 !important; }
 .navbar-user-avatar img {
-  width: 36px !important;
-  height: 36px !important;
+  width: 40px !important;
+  height: 40px !important;
   min-height: unset !important;
   border-radius: 50% !important;
   object-fit: cover !important;
@@ -269,6 +275,22 @@ body {
   font-weight: 700 !important;
   color: #fff !important;
   line-height: 1 !important;
+}
+
+/* Brand wordmark shown just before the logo on the right of the navbar. */
+.navbar-center-name {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: .04em !important;
+  color: var(--navy, #0C1F45) !important;
+  white-space: nowrap !important;
+  margin-right: 2px !important;
+}
+.dark-mode .navbar-center-name,
+[data-theme="dark"] .navbar-center-name { color: #DCEBFF !important; }
+/* Keep it from crowding small screens. */
+@media (max-width: 640px) {
+  .navbar-center-name { display: none !important; }
 }
 
 /* Logout — icon only, no border/colour */

@@ -139,6 +139,18 @@ canvas {
   max-width: 100%;
 }
 
+/* Desktop guard: Chart.js (maintainAspectRatio:false) will grow a canvas to
+   match its container, and on wide screens these chart cards have no fixed
+   height — so the charts rendered hundreds of pixels tall. Cap them to a
+   normal height. (A tighter mobile cap already exists further down.) */
+.ice-chart-card canvas,
+.erpnext-card canvas,
+.trend-card canvas,
+.rp-chart-card canvas,
+.pg-chart-card canvas {
+  max-height: 300px;
+}
+
 .admin-chart-stage,
 .ice-chart-card,
 .erpnext-card:has(canvas) {
@@ -280,10 +292,15 @@ canvas {
     min-height: 44px;
   }
 
-  .navbar-brand,
-  .navbar-user-avatar {
+  .navbar-brand {
     min-height: 44px !important;
     height: 44px !important;
+  }
+  /* The avatar is a fixed 40x40 circle (see iceberg.css); don't stretch its
+     height here or it becomes a 40x44 oval on mobile. */
+  .navbar-user-avatar {
+    min-height: 40px !important;
+    height: 40px !important;
   }
 
   .ice-manage-card {

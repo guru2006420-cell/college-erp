@@ -36,11 +36,21 @@
 .sf-chart-head i { color: var(--sf-cyan); }
 .sf-chart-body {
   position: relative;
-  min-height: 220px;
+  /* Fixed height (not min-height): Chart.js runs maintainAspectRatio:false, so
+     a growable container lets the canvas balloon to 600px+ on desktop. */
+  height: 260px;
   padding: 12px 14px 16px;
 }
+/* Canvas pinned to the padded box so it can't feed its height back in. */
+.sf-chart-body canvas {
+  position: absolute;
+  inset: 12px 14px 16px;
+  width: auto !important;
+  height: auto !important;
+  max-height: 100% !important;
+}
 @media (max-width: 1023px) { .sf-chart-grid { grid-template-columns: 1fr; } }
-@media (max-width: 767px)  { .sf-chart-body { min-height: 188px; } }
+@media (max-width: 767px)  { .sf-chart-body { height: 220px; } }
 </style>
 {% endblock custom_css %}
 

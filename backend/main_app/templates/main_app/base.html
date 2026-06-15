@@ -101,6 +101,44 @@
   #main-content > .content-area { animation: none !important; }
   .ice-skel { animation: none; }
 }
+
+/* ── Authoritative navbar brand logo (loads after every stylesheet) ──────
+   Several skins (storefront-ui, mobile-adaptive) set conflicting size/shape
+   rules via !important across files, which turned the badge into an oval /
+   rounded square. This block is the single source of truth: a fixed 40x40
+   perfect circle on every screen, for every role. */
+.erpnext-navbar .navbar-user-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  border: none !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.erpnext-navbar .navbar-user-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+.erpnext-navbar .navbar-center-name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--navy, #0C1F45);
+  white-space: nowrap;
+  margin-right: 2px;
+}
+.dark-mode .erpnext-navbar .navbar-center-name,
+[data-theme="dark"] .erpnext-navbar .navbar-center-name { color: #DCEBFF; }
+@media (max-width: 640px) {
+  .erpnext-navbar .navbar-center-name { display: none; }
+}
     </style>
     {% block custom_css %}{% endblock custom_css %}
     <script>
@@ -185,16 +223,14 @@
                 </a>
             {% endif %}
 
-            <!-- User avatar + name -->
+            <!-- Brand wordmark + fixed ICEBERG logo.
+                 The logo is a fixed brand mark (same for every role and NOT the
+                 user's editable profile picture), so it can't be changed by any
+                 of the four roles. Still links to the profile hub for settings. -->
             {% url 'profile_hub' as profile_url %}
+            <span class="navbar-center-name">ICEBERG STUDY CENTER</span>
             <a href="{{ profile_url }}" class="navbar-user-avatar" title="My profile" id="navbar-avatar-link" aria-label="Open my profile and settings">
-                {% if user.profile_pic %}
-                    <img src="{{ user.profile_pic.url }}" alt="{{ user.first_name }}"
-                         onerror="this.style.display='none';document.getElementById('navbar-initials').style.display='flex';">
-                    <span id="navbar-initials" style="display:none;">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</span>
-                {% else %}
-                    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
-                {% endif %}
+                <img src="{% static 'dist/img/logo.png' %}" alt="ICEBERG">
             </a>
 
             <!-- Logout (animated, POST + CSRF, JS-optional) -->

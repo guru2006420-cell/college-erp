@@ -560,19 +560,25 @@
 
 .admin-chart-stage {
   position: relative;
-  min-height: 252px;
+  /* Fixed height (not min-height): Chart.js runs with maintainAspectRatio:false,
+     so a container that can grow lets the canvas balloon to 600px+ on wide
+     desktop screens. A definite height keeps every chart a normal size. */
+  height: 280px;
 }
 
 .admin-chart-stage--donut {
-  min-height: 236px;
+  height: 240px;
 }
 
 .admin-chart-stage canvas {
-  position: relative;
+  /* Absolutely positioned so the canvas is out of flow and can never feed its
+     own height back into the stage (which caused the runaway growth). */
+  position: absolute;
+  inset: 0;
   z-index: 2;
   width: 100% !important;
   height: 100% !important;
-  min-height: inherit;
+  max-height: 100% !important;
 }
 
 .admin-chart-skeleton {
@@ -1007,7 +1013,7 @@
   }
   .admin-chart-stage,
   .admin-chart-stage--donut {
-    min-height: 200px;
+    height: 220px;
   }
   /* Row items: slightly tighter on mobile */
   .admin-attendance-row,
