@@ -71,8 +71,8 @@ class LoginCheckMiddleWare(MiddlewareMixin):
                 or request.path.startswith("/password-reset-success")
                 # Flutter web SPA — handles its own JWT auth internally.
                 or request.path.startswith("/app")
-                # Public APK download — no login required.
-                or request.path == "/download/app.apk"
+                # Public APK download and install guide — no login required.
+                or request.path.startswith("/download/")
             ):
                 pass
             else:
