@@ -5,6 +5,7 @@ Usage: {% load uzs %}  ->  {{ invoice.amount|uzs }}  ->  "200 ming soʻm"
 Round thousands/millions render the local "ming"/"million" words; other
 amounts fall back to comma-grouped digits (e.g. "200,500 soʻm").
 """
+
 from decimal import Decimal, InvalidOperation
 
 from django import template

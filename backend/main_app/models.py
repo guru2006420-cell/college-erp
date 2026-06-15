@@ -606,9 +606,7 @@ class ChatMessage(models.Model):
     thread = models.ForeignKey(ChatThread, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="chat_messages")
     body = models.TextField(blank=True, default="")
-    attachment = models.FileField(
-        upload_to="chat_attachments/%Y/%m/", blank=True, null=True
-    )
+    attachment = models.FileField(upload_to="chat_attachments/%Y/%m/", blank=True, null=True)
     attachment_name = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -628,7 +626,9 @@ class ChatMessage(models.Model):
 
     @property
     def attachment_display_name(self):
-        return self.attachment_name or (self.attachment.name.rsplit("/", 1)[-1] if self.attachment else "")
+        return self.attachment_name or (
+            self.attachment.name.rsplit("/", 1)[-1] if self.attachment else ""
+        )
 
     def __str__(self):
         return f"{self.sender.email} -> {self.thread.group.name}: {self.body[:50]}"
@@ -1161,7 +1161,9 @@ class Invoice(models.Model):
         ]
 
     def __str__(self):
-        return f"Invoice #{self.pk} {self.student} {self.period:%Y-%m} ({self.get_status_display()})"
+        return (
+            f"Invoice #{self.pk} {self.student} {self.period:%Y-%m} ({self.get_status_display()})"
+        )
 
     @property
     def period_label(self):

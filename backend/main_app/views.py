@@ -26,7 +26,6 @@ from .models import (
     Attendance,
     AttendanceReport,
     Branch,
-    Course,
     Enrollment,
     Group,
     ResultFile,
@@ -346,9 +345,13 @@ def _student_profile_context(user):
 
     assignment_count = Assignment.objects.filter(group_id__in=group_ids).count()
     result_count = StudentResult.objects.filter(student=student).count()
-    file_count = ResultFile.objects.filter(
-        group_id__in=group_ids,
-    ).filter(Q(student__isnull=True) | Q(student=student)).count()
+    file_count = (
+        ResultFile.objects.filter(
+            group_id__in=group_ids,
+        )
+        .filter(Q(student__isnull=True) | Q(student=student))
+        .count()
+    )
     group_names = ", ".join(g.name for g in groups[:2]) or "Not assigned"
     if len(groups) > 2:
         group_names += f" +{len(groups) - 2}"
@@ -371,14 +374,52 @@ def _student_profile_context(user):
         {"label": "Results", "value": result_count + file_count, "icon": "fa-chart-line"},
     ]
     role_rows = [
-        _reverse_row("My Course", str(student.course) if student.course else "Course not set", "fa-book-open", "student_home", "icon-hover-folder"),
+        _reverse_row(
+            "My Course",
+            str(student.course) if student.course else "Course not set",
+            "fa-book-open",
+            "student_home",
+            "icon-hover-folder",
+        ),
         _reverse_row("My Group", group_names, "fa-users", "student_home", "icon-hover-pulse"),
-        _reverse_row("Attendance Summary", attendance_label, "fa-calendar-check", "student_view_attendance", "icon-hover-bounce"),
-        _reverse_row("Results", "Exam scores and result files", "fa-chart-line", "student_view_result", "icon-hover-pulse"),
-        _reverse_row("Assignments / Tasks", f"{assignment_count} assigned", "fa-tasks", "student_assignments", "icon-hover-wiggle"),
-        _reverse_row("Vocabulary / Study Settings", "Daily vocabulary and practice", "fa-spell-check", "vocabulary_day_list", "icon-hover-bounce"),
-        _reverse_row("Study Progress", "Learning progress and leaderboard", "fa-chart-line", "student_progress", "icon-hover-pulse"),
-        _reverse_row("Library", "Issued books and resources", "fa-book", "view_books", "icon-hover-folder"),
+        _reverse_row(
+            "Attendance Summary",
+            attendance_label,
+            "fa-calendar-check",
+            "student_view_attendance",
+            "icon-hover-bounce",
+        ),
+        _reverse_row(
+            "Results",
+            "Exam scores and result files",
+            "fa-chart-line",
+            "student_view_result",
+            "icon-hover-pulse",
+        ),
+        _reverse_row(
+            "Assignments / Tasks",
+            f"{assignment_count} assigned",
+            "fa-tasks",
+            "student_assignments",
+            "icon-hover-wiggle",
+        ),
+        _reverse_row(
+            "Vocabulary / Study Settings",
+            "Daily vocabulary and practice",
+            "fa-spell-check",
+            "vocabulary_day_list",
+            "icon-hover-bounce",
+        ),
+        _reverse_row(
+            "Study Progress",
+            "Learning progress and leaderboard",
+            "fa-chart-line",
+            "student_progress",
+            "icon-hover-pulse",
+        ),
+        _reverse_row(
+            "Library", "Issued books and resources", "fa-book", "view_books", "icon-hover-folder"
+        ),
     ]
     return {
         "role_profile": student,
@@ -435,12 +476,48 @@ def _staff_profile_context(user):
     ]
     role_rows = [
         _reverse_row("My Groups", group_names, "fa-layer-group", "staff_home", "icon-hover-folder"),
-        _reverse_row("My Students", f"{total_students} active students", "fa-users", "staff_home", "icon-hover-pulse"),
-        _reverse_row("Attendance Settings", "Take or update attendance", "fa-clipboard-check", "staff_take_attendance", "icon-hover-bounce"),
-        _reverse_row("Result Upload Settings", "Add scores and upload files", "fa-file-upload", "staff_add_result", "icon-hover-pulse"),
-        _reverse_row("Assignments / Vocabulary Settings", f"{assignment_count} assignments created", "fa-tasks", "staff_assignments", "icon-hover-wiggle"),
-        _reverse_row("Daily Vocabulary", "Create and manage study days", "fa-spell-check", "staff_vocabulary_days", "icon-hover-bounce"),
-        _reverse_row("Teaching Profile", "Specialization and contact details", "fa-chalkboard-teacher", "staff_home", "icon-hover-pulse"),
+        _reverse_row(
+            "My Students",
+            f"{total_students} active students",
+            "fa-users",
+            "staff_home",
+            "icon-hover-pulse",
+        ),
+        _reverse_row(
+            "Attendance Settings",
+            "Take or update attendance",
+            "fa-clipboard-check",
+            "staff_take_attendance",
+            "icon-hover-bounce",
+        ),
+        _reverse_row(
+            "Result Upload Settings",
+            "Add scores and upload files",
+            "fa-file-upload",
+            "staff_add_result",
+            "icon-hover-pulse",
+        ),
+        _reverse_row(
+            "Assignments / Vocabulary Settings",
+            f"{assignment_count} assignments created",
+            "fa-tasks",
+            "staff_assignments",
+            "icon-hover-wiggle",
+        ),
+        _reverse_row(
+            "Daily Vocabulary",
+            "Create and manage study days",
+            "fa-spell-check",
+            "staff_vocabulary_days",
+            "icon-hover-bounce",
+        ),
+        _reverse_row(
+            "Teaching Profile",
+            "Specialization and contact details",
+            "fa-chalkboard-teacher",
+            "staff_home",
+            "icon-hover-pulse",
+        ),
     ]
     return {
         "role_profile": staff,
@@ -469,7 +546,9 @@ def _admin_profile_context(user):
         groups_qs = branching.filter_groups_for_user(user, Group.objects.filter(is_archived=False))
         branches_qs = branching.filter_branches_for_user(user, Branch.objects.all())
     except Exception:
-        logger.exception("Profile hub admin branch scoping failed; falling back to unscoped counts.")
+        logger.exception(
+            "Profile hub admin branch scoping failed; falling back to unscoped counts."
+        )
         students_qs = Student.objects.all()
         staff_qs = Staff.objects.all()
         groups_qs = Group.objects.filter(is_archived=False)
@@ -486,7 +565,10 @@ def _admin_profile_context(user):
 
     meta = [
         {"icon": "fa-envelope", "text": user.email or "Email not set"},
-        {"icon": "fa-shield-alt", "text": "Super Admin" if admin_profile.is_super_admin else "Branch Admin"},
+        {
+            "icon": "fa-shield-alt",
+            "text": "Super Admin" if admin_profile.is_super_admin else "Branch Admin",
+        },
         {"icon": "fa-map-marker-alt", "text": branch_label},
     ]
     stats = [
@@ -496,13 +578,55 @@ def _admin_profile_context(user):
         {"label": "Branches", "value": branches_qs.count(), "icon": "fa-building"},
     ]
     role_rows = [
-        _reverse_row("Branch / Center Settings", branch_label, "fa-building", "manage_branch", "icon-hover-folder"),
-        _reverse_row("User Management Shortcuts", "Teachers, students, and accounts", "fa-users-cog", "manage_staff", "icon-hover-rotate"),
-        _reverse_row("Teacher Settings", f"{staff_qs.count()} teachers", "fa-chalkboard-teacher", "manage_staff", "icon-hover-pulse"),
-        _reverse_row("Student Settings", f"{students_qs.count()} students", "fa-user-graduate", "manage_student", "icon-hover-bounce"),
-        _reverse_row("Course / Group Settings", "Courses, groups, enrollments", "fa-layer-group", "manage_group", "icon-hover-folder"),
-        _reverse_row("System Preferences", "Leaderboard rules and seasons", "fa-sliders-h", "admin_leaderboard_settings", "icon-hover-rotate"),
-        _reverse_row("Reports / Dashboard Preferences", "Attendance and stories", "fa-chart-line", "admin_view_attendance", "icon-hover-pulse"),
+        _reverse_row(
+            "Branch / Center Settings",
+            branch_label,
+            "fa-building",
+            "manage_branch",
+            "icon-hover-folder",
+        ),
+        _reverse_row(
+            "User Management Shortcuts",
+            "Teachers, students, and accounts",
+            "fa-users-cog",
+            "manage_staff",
+            "icon-hover-rotate",
+        ),
+        _reverse_row(
+            "Teacher Settings",
+            f"{staff_qs.count()} teachers",
+            "fa-chalkboard-teacher",
+            "manage_staff",
+            "icon-hover-pulse",
+        ),
+        _reverse_row(
+            "Student Settings",
+            f"{students_qs.count()} students",
+            "fa-user-graduate",
+            "manage_student",
+            "icon-hover-bounce",
+        ),
+        _reverse_row(
+            "Course / Group Settings",
+            "Courses, groups, enrollments",
+            "fa-layer-group",
+            "manage_group",
+            "icon-hover-folder",
+        ),
+        _reverse_row(
+            "System Preferences",
+            "Leaderboard rules and seasons",
+            "fa-sliders-h",
+            "admin_leaderboard_settings",
+            "icon-hover-rotate",
+        ),
+        _reverse_row(
+            "Reports / Dashboard Preferences",
+            "Attendance and stories",
+            "fa-chart-line",
+            "admin_view_attendance",
+            "icon-hover-pulse",
+        ),
     ]
     return {
         "role_profile": admin_profile,
@@ -529,17 +653,23 @@ def profile_settings_hub(request):
             request.FILES or None,
             instance=profile,
         )
-        save_fn = lambda: _save_admin_profile(request, profile, form)
+
+        def save_fn():
+            return _save_admin_profile(request, profile, form)
     elif user_type == "2":
         ctx = _staff_profile_context(request.user)
         profile = ctx["role_profile"]
         form = StaffProfileForm(instance=profile, data=request.POST or None)
-        save_fn = lambda: _save_staff_profile(profile, form)
+
+        def save_fn():
+            return _save_staff_profile(profile, form)
     elif user_type == "3":
         ctx = _student_profile_context(request.user)
         profile = ctx["role_profile"]
         form = StudentProfileForm(instance=profile, data=request.POST or None)
-        save_fn = lambda: _save_student_profile(profile, form)
+
+        def save_fn():
+            return _save_student_profile(profile, form)
     else:
         messages.error(request, "Your account role is not configured correctly.")
         logout(request)
@@ -600,38 +730,110 @@ def profile_settings_hub(request):
     if user_type == "2":
         preference_rows.extend(
             [
-                _reverse_row("Notifications", "Announcements and alerts", "fa-bell", "staff_view_notification", "icon-hover-bell"),
-                _reverse_row("Messages", "Group chat and conversations", "fa-comments", "messages", "icon-hover-wiggle"),
+                _reverse_row(
+                    "Notifications",
+                    "Announcements and alerts",
+                    "fa-bell",
+                    "staff_view_notification",
+                    "icon-hover-bell",
+                ),
+                _reverse_row(
+                    "Messages",
+                    "Group chat and conversations",
+                    "fa-comments",
+                    "messages",
+                    "icon-hover-wiggle",
+                ),
             ]
         )
     elif user_type == "3":
         preference_rows.extend(
             [
-                _reverse_row("Notifications", "Announcements and alerts", "fa-bell", "student_view_notification", "icon-hover-bell"),
-                _reverse_row("Messages", "Group chat and conversations", "fa-comments", "messages", "icon-hover-wiggle"),
+                _reverse_row(
+                    "Notifications",
+                    "Announcements and alerts",
+                    "fa-bell",
+                    "student_view_notification",
+                    "icon-hover-bell",
+                ),
+                _reverse_row(
+                    "Messages",
+                    "Group chat and conversations",
+                    "fa-comments",
+                    "messages",
+                    "icon-hover-wiggle",
+                ),
             ]
         )
     else:
         preference_rows.append(
-            _reverse_row("Messages", "Team and group conversations", "fa-comments", "messages", "icon-hover-wiggle")
+            _reverse_row(
+                "Messages",
+                "Team and group conversations",
+                "fa-comments",
+                "messages",
+                "icon-hover-wiggle",
+            )
         )
 
     support_rows = []
     if user_type == "1":
         support_rows = [
-            _reverse_row("Help & Support", "Review student feedback", "fa-circle-question", "student_feedback_message", "icon-hover-rotate"),
-            _reverse_row("Teacher Feedback", "Review teacher messages", "fa-comment-dots", "staff_feedback_message", "icon-hover-wiggle"),
-            _reverse_row("Registration Leads", "Follow up with interested students", "fa-user-clock", "manage_registration_leads", "icon-hover-pulse"),
+            _reverse_row(
+                "Help & Support",
+                "Review student feedback",
+                "fa-circle-question",
+                "student_feedback_message",
+                "icon-hover-rotate",
+            ),
+            _reverse_row(
+                "Teacher Feedback",
+                "Review teacher messages",
+                "fa-comment-dots",
+                "staff_feedback_message",
+                "icon-hover-wiggle",
+            ),
+            _reverse_row(
+                "Registration Leads",
+                "Follow up with interested students",
+                "fa-user-clock",
+                "manage_registration_leads",
+                "icon-hover-pulse",
+            ),
         ]
     elif user_type == "2":
         support_rows = [
-            _reverse_row("Help & Feedback", "Contact admin", "fa-circle-question", "staff_feedback", "icon-hover-rotate"),
-            _reverse_row("Apply for Leave", "Request time off", "fa-plane-departure", "staff_apply_leave", "icon-hover-bounce"),
+            _reverse_row(
+                "Help & Feedback",
+                "Contact admin",
+                "fa-circle-question",
+                "staff_feedback",
+                "icon-hover-rotate",
+            ),
+            _reverse_row(
+                "Apply for Leave",
+                "Request time off",
+                "fa-plane-departure",
+                "staff_apply_leave",
+                "icon-hover-bounce",
+            ),
         ]
     else:
         support_rows = [
-            _reverse_row("Help & Feedback", "Contact your teacher or admin", "fa-circle-question", "student_feedback", "icon-hover-rotate"),
-            _reverse_row("Apply for Leave", "Request time off", "fa-plane-departure", "student_apply_leave", "icon-hover-bounce"),
+            _reverse_row(
+                "Help & Feedback",
+                "Contact your teacher or admin",
+                "fa-circle-question",
+                "student_feedback",
+                "icon-hover-rotate",
+            ),
+            _reverse_row(
+                "Apply for Leave",
+                "Request time off",
+                "fa-plane-departure",
+                "student_apply_leave",
+                "icon-hover-bounce",
+            ),
         ]
     support_rows.append(
         _settings_row(
@@ -649,7 +851,11 @@ def profile_settings_hub(request):
             "page_title": "My Profile / Settings",
             "open_edit_panel": open_edit_panel,
             "dashboard_url": reverse(
-                "admin_home" if user_type == "1" else "staff_home" if user_type == "2" else "student_home"
+                "admin_home"
+                if user_type == "1"
+                else "staff_home"
+                if user_type == "2"
+                else "student_home"
             ),
             "settings_groups": [
                 {"label": "Account", "rows": account_rows},

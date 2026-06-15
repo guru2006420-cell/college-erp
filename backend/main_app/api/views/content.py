@@ -7,13 +7,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ... import branching
 from ...models import (
     DashboardStory,
     Enrollment,
     Group,
     LeaderboardSeason,
-    LeaderboardSnapshot,
     Staff,
     Student,
     StudentResult,
@@ -39,34 +37,38 @@ from ..serializers import (
 
 class VocabularyDayListView(APIView):
     """Student: list released vocabulary days for their enrolled groups."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from django.utils import timezone as tz
         from ..serializers import VocabularyDaySerializer
+
         user = request.user
         try:
             student = user.student
         except Exception:
             return Response([], status=status.HTTP_200_OK)
-        enrolled_groups = Group.objects.filter(enrollment__student=student, enrollment__is_active=True)
+        enrolled_groups = Group.objects.filter(
+            enrollment__student=student, enrollment__is_active=True
+        )
         qs = (
-            VocabularyDay.objects
-            .filter(group__in=enrolled_groups, release_at__lte=tz.now())
+            VocabularyDay.objects.filter(group__in=enrolled_groups, release_at__lte=tz.now())
             .prefetch_related("words")
             .select_related("group")
             .order_by("group", "day_number")
         )
-        from ..serializers import VocabularyDaySerializer
         return Response(VocabularyDaySerializer(qs, many=True, context={"request": request}).data)
 
 
 class VocabularyDayDetailView(APIView):
     """Student: get full words for one vocabulary day."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         from ..serializers import VocabularyDaySerializer
+
         try:
             student = request.user.student
         except Exception:
@@ -77,7 +79,9 @@ class VocabularyDayDetailView(APIView):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         if not day.is_released:
             return Response({"detail": "Not released yet."}, status=status.HTTP_403_FORBIDDEN)
-        enrolled = Group.objects.filter(enrollment__student=student, enrollment__is_active=True, pk=day.group_id).exists()
+        enrolled = Group.objects.filter(
+            enrollment__student=student, enrollment__is_active=True, pk=day.group_id
+        ).exists()
         if not enrolled:
             return Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
         return Response(VocabularyDaySerializer(day, context={"request": request}).data)
@@ -85,6 +89,7 @@ class VocabularyDayDetailView(APIView):
 
 class VocabularyDayCompleteView(APIView):
     """Student: mark a vocabulary day as completed."""
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -96,7 +101,9 @@ class VocabularyDayCompleteView(APIView):
             day = VocabularyDay.objects.get(pk=pk)
         except VocabularyDay.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        enrolled = Group.objects.filter(enrollment__student=student, enrollment__is_active=True, pk=day.group_id).exists()
+        enrolled = Group.objects.filter(
+            enrollment__student=student, enrollment__is_active=True, pk=day.group_id
+        ).exists()
         if not enrolled:
             return Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
         VocabularyDayCompletion.objects.get_or_create(student=student, day=day)
@@ -110,13 +117,16 @@ class VocabularyDayCompleteView(APIView):
 
 class VocabularyQuizView(APIView):
     """Student: generate shuffled MCQ quiz for a vocabulary day."""
+
     permission_classes = [IsStudent]
 
     def get(self, request, pk):
         try:
             student = request.user.student
         except Student.DoesNotExist:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         try:
             day = VocabularyDay.objects.prefetch_related("words").select_related("group").get(pk=pk)
@@ -126,13 +136,17 @@ class VocabularyQuizView(APIView):
         if not day.is_released:
             return Response({"detail": "Not released yet."}, status=status.HTTP_403_FORBIDDEN)
 
-        enrolled = Enrollment.objects.filter(student=student, group=day.group, is_active=True).exists()
+        enrolled = Enrollment.objects.filter(
+            student=student, group=day.group, is_active=True
+        ).exists()
         if day.release_scope != VocabularyDay.SCOPE_ALL and not enrolled:
             return Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
 
         all_words = list(day.words.all())
         if len(all_words) < 2:
-            return Response({"detail": "Need at least 2 words for a quiz."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Need at least 2 words for a quiz."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         questions = []
         for w in all_words:
@@ -143,13 +157,15 @@ class VocabularyQuizView(APIView):
                 {"id": d.id, "word": d.word} for d in distractors
             ]
             _random.shuffle(choices)
-            questions.append({
-                "id": w.id,
-                "meaning": w.meaning,
-                "example_sentence": w.example_sentence,
-                "correct_id": w.id,
-                "choices": choices,
-            })
+            questions.append(
+                {
+                    "id": w.id,
+                    "meaning": w.meaning,
+                    "example_sentence": w.example_sentence,
+                    "correct_id": w.id,
+                    "choices": choices,
+                }
+            )
         _random.shuffle(questions)
 
         data = {
@@ -164,13 +180,16 @@ class VocabularyQuizView(APIView):
 
 class VocabularyQuizResultView(APIView):
     """Student: submit quiz result, auto-complete day if score >= 60%."""
+
     permission_classes = [IsStudent]
 
     def post(self, request, pk):
         try:
             student = request.user.student
         except Student.DoesNotExist:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         try:
             day = VocabularyDay.objects.get(pk=pk)
@@ -180,13 +199,18 @@ class VocabularyQuizResultView(APIView):
         correct = request.data.get("correct")
         total = request.data.get("total")
         if correct is None or total is None:
-            return Response({"detail": "correct and total are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "correct and total are required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             correct = int(correct)
             total = int(total)
         except (ValueError, TypeError):
-            return Response({"detail": "correct and total must be integers."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "correct and total must be integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         score = round((correct / total) * 100, 1) if total else 0.0
 
@@ -201,7 +225,9 @@ class VocabularyQuizResultView(APIView):
         if score >= 60:
             VocabularyDayCompletion.objects.get_or_create(student=student, day=day)
 
-        best_result = VocabularyQuizResult.objects.filter(student=student, day=day).order_by("-score").first()
+        best_result = (
+            VocabularyQuizResult.objects.filter(student=student, day=day).order_by("-score").first()
+        )
         best_score = best_result.score if best_result else score
 
         return Response({"status": "ok", "score": score, "best_score": best_score})
@@ -214,6 +240,7 @@ class VocabularyQuizResultView(APIView):
 
 class StudentProgressView(APIView):
     """Student: chart data for the progress screen."""
+
     permission_classes = [IsStudent]
 
     def get(self, request):
@@ -224,10 +251,14 @@ class StudentProgressView(APIView):
         try:
             student = request.user.student
         except Student.DoesNotExist:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         enrolled_group_ids = list(
-            Enrollment.objects.filter(student=student, is_active=True).values_list("group_id", flat=True)
+            Enrollment.objects.filter(student=student, is_active=True).values_list(
+                "group_id", flat=True
+            )
         )
         today = tz.localdate()
         days_30 = [(today - datetime.timedelta(days=i)) for i in range(29, -1, -1)]
@@ -244,7 +275,9 @@ class StudentProgressView(APIView):
         activity_30d = [completions_qs.get(d, 0) for d in days_30]
 
         # Last 20 quiz results ordered by taken_at
-        quiz_results_qs = VocabularyQuizResult.objects.filter(student=student).order_by("taken_at")[:20]
+        quiz_results_qs = VocabularyQuizResult.objects.filter(student=student).order_by("taken_at")[
+            :20
+        ]
         quiz_scores = [
             {
                 "score": qr.score,
@@ -262,13 +295,15 @@ class StudentProgressView(APIView):
         for r in results_qs:
             total = int(r.test) + int(r.exam)
             score_pct = round(total / 2, 1)  # out of 100 total (50+50)
-            exam_results.append({
-                "group_name": r.group.name if r.group else "General",
-                "test_score": r.test,
-                "exam_score": r.exam,
-                "total": total,
-                "score_pct": score_pct,
-            })
+            exam_results.append(
+                {
+                    "group_name": r.group.name if r.group else "General",
+                    "test_score": r.test,
+                    "exam_score": r.exam,
+                    "total": total,
+                    "score_pct": score_pct,
+                }
+            )
 
         # Attendance percentage
         reports = AttendanceReport.objects.filter(student=student)
@@ -279,19 +314,23 @@ class StudentProgressView(APIView):
         # Summary stats
         completed_days = VocabularyDayCompletion.objects.filter(student=student).count()
         quiz_count = VocabularyQuizResult.objects.filter(student=student).count()
-        avg_quiz_agg = VocabularyQuizResult.objects.filter(student=student).aggregate(avg=Avg("score"))
+        avg_quiz_agg = VocabularyQuizResult.objects.filter(student=student).aggregate(
+            avg=Avg("score")
+        )
         avg_quiz_score = round(avg_quiz_agg["avg"], 1) if avg_quiz_agg["avg"] is not None else 0.0
 
-        return Response({
-            "activity_30d": activity_30d,
-            "quiz_scores": quiz_scores,
-            "exam_results": exam_results,
-            "date_labels_30d": date_labels_30d,
-            "attendance_pct": attendance_pct,
-            "completed_days": completed_days,
-            "quiz_count": quiz_count,
-            "avg_quiz_score": avg_quiz_score,
-        })
+        return Response(
+            {
+                "activity_30d": activity_30d,
+                "quiz_scores": quiz_scores,
+                "exam_results": exam_results,
+                "date_labels_30d": date_labels_30d,
+                "attendance_pct": attendance_pct,
+                "completed_days": completed_days,
+                "quiz_count": quiz_count,
+                "avg_quiz_score": avg_quiz_score,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -306,10 +345,12 @@ class LeaderboardView(APIView):
     *group* keeps classmates from the student\'s active groups, *branch*
     keeps students of the same branch. Rows are re-ranked within the scope.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from ..serializers import LeaderboardEntrySerializer
+
         season_id = request.query_params.get("season_id")
         if season_id:
             try:
@@ -317,9 +358,13 @@ class LeaderboardView(APIView):
             except LeaderboardSeason.DoesNotExist:
                 return Response({"detail": "Season not found."}, status=status.HTTP_404_NOT_FOUND)
         else:
-            season = LeaderboardSeason.objects.filter(is_active=True).order_by("-start_date").first()
+            season = (
+                LeaderboardSeason.objects.filter(is_active=True).order_by("-start_date").first()
+            )
             if not season:
-                return Response({"detail": "No active leaderboard season."}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"detail": "No active leaderboard season."}, status=status.HTTP_404_NOT_FOUND
+                )
 
         snapshots = season.snapshots.select_related("student__admin").order_by("rank")
 
@@ -361,17 +406,19 @@ class LeaderboardView(APIView):
                 my_rank = i
             entries.append(row)
 
-        return Response({
-            "id": season.id,
-            "name": season.name,
-            "period": season.period,
-            "start_date": season.start_date,
-            "end_date": season.end_date,
-            "is_active": season.is_active,
-            "scope": scope if scope in ("overall", "group", "branch") else "overall",
-            "my_rank": my_rank,
-            "entries": entries,
-        })
+        return Response(
+            {
+                "id": season.id,
+                "name": season.name,
+                "period": season.period,
+                "start_date": season.start_date,
+                "end_date": season.end_date,
+                "is_active": season.is_active,
+                "scope": scope if scope in ("overall", "group", "branch") else "overall",
+                "my_rank": my_rank,
+                "entries": entries,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -381,17 +428,21 @@ class LeaderboardView(APIView):
 
 class StoryListView(APIView):
     """GET: all authenticated users. Filters by enrolled groups for students."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from django.utils import timezone as tz
+
         user = request.user
         user_type = str(user.user_type)
 
         now = tz.now()
-        qs = DashboardStory.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-        ).prefetch_related("target_groups")
+        qs = (
+            DashboardStory.objects.filter(is_active=True)
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .prefetch_related("target_groups")
+        )
 
         if user_type == "3":
             try:
@@ -399,7 +450,9 @@ class StoryListView(APIView):
             except Student.DoesNotExist:
                 return Response([], status=status.HTTP_200_OK)
             enrolled_group_ids = list(
-                Enrollment.objects.filter(student=student, is_active=True).values_list("group_id", flat=True)
+                Enrollment.objects.filter(student=student, is_active=True).values_list(
+                    "group_id", flat=True
+                )
             )
             # Show stories targeted to enrolled groups OR stories with no target groups (all)
             qs = qs.filter(
@@ -413,6 +466,7 @@ class StoryListView(APIView):
 
 class StoryCreateView(APIView):
     """POST: Admin or Staff only."""
+
     permission_classes = [IsAdminOrTeacher]
 
     def post(self, request):
@@ -421,7 +475,9 @@ class StoryCreateView(APIView):
 
         title = request.data.get("title", "").strip()
         if not title:
-            return Response({"title": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"title": "This field is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         body = request.data.get("body", "")
         story_type = request.data.get("story_type", DashboardStory.TYPE_ANNOUNCEMENT)
@@ -456,6 +512,7 @@ class StoryCreateView(APIView):
 
 class StoryDetailView(APIView):
     """DELETE: Admin or creator (staff)."""
+
     permission_classes = [IsAdminOrTeacher]
 
     def delete(self, request, pk):
@@ -482,28 +539,38 @@ class StoryDetailView(APIView):
 
 class StaffVocabularyListView(APIView):
     """Staff: list vocabulary days they created."""
+
     permission_classes = [IsTeacher]
 
     def get(self, request):
         try:
             staff = request.user.staff
         except Staff.DoesNotExist:
-            return Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
-        days = VocabularyDay.objects.filter(created_by=staff).select_related("group").prefetch_related("words", "completions")
+        days = (
+            VocabularyDay.objects.filter(created_by=staff)
+            .select_related("group")
+            .prefetch_related("words", "completions")
+        )
         serializer = StaffVocabularyDaySerializer(days, many=True, context={"request": request})
         return Response(serializer.data)
 
 
 class StaffVocabularyCreateView(APIView):
     """Staff: create a new vocabulary day."""
+
     permission_classes = [IsTeacher]
 
     def post(self, request):
         try:
             staff = request.user.staff
         except Staff.DoesNotExist:
-            return Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         group_id = request.data.get("group")
         if not group_id:
@@ -533,19 +600,28 @@ class StaffVocabularyCreateView(APIView):
 
 class StaffVocabularyDetailView(APIView):
     """Staff: GET/PATCH/DELETE a vocabulary day they own."""
+
     permission_classes = [IsTeacher]
 
     def _get_day(self, request, pk):
         try:
             staff = request.user.staff
         except Staff.DoesNotExist:
-            return None, Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return None, Response(
+                {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
         try:
-            day = VocabularyDay.objects.prefetch_related("words", "completions").select_related("group").get(pk=pk)
+            day = (
+                VocabularyDay.objects.prefetch_related("words", "completions")
+                .select_related("group")
+                .get(pk=pk)
+            )
         except VocabularyDay.DoesNotExist:
             return None, Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         if day.created_by_id != staff.id:
-            return None, Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+            return None, Response(
+                {"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN
+            )
         return day, None
 
     def get(self, request, pk):
@@ -559,7 +635,9 @@ class StaffVocabularyDetailView(APIView):
         day, err = self._get_day(request, pk)
         if err:
             return err
-        serializer = StaffVocabularyDaySerializer(day, data=request.data, partial=True, context={"request": request})
+        serializer = StaffVocabularyDaySerializer(
+            day, data=request.data, partial=True, context={"request": request}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
@@ -575,19 +653,24 @@ class StaffVocabularyDetailView(APIView):
 
 class StaffVocabularyWordView(APIView):
     """Staff: add or remove words from a vocabulary day they own."""
+
     permission_classes = [IsTeacher]
 
     def _get_day(self, request, pk):
         try:
             staff = request.user.staff
         except Staff.DoesNotExist:
-            return None, Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return None, Response(
+                {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
         try:
             day = VocabularyDay.objects.get(pk=pk)
         except VocabularyDay.DoesNotExist:
             return None, Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         if day.created_by_id != staff.id:
-            return None, Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+            return None, Response(
+                {"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN
+            )
         return day, None
 
     def post(self, request, pk):
@@ -622,6 +705,7 @@ class StaffVocabularyWordView(APIView):
 
 class MessageThreadListView(APIView):
     """List chat threads (one per accessible group) for any role."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -637,24 +721,28 @@ class MessageThreadListView(APIView):
                 .order_by("-created_at")
                 .first()
             )
-            threads.append({
-                "id": group.id,
-                "group_id": group.id,
-                "group_name": group.name,
-                "last_message": (last.body[:120] if last else ""),
-                "last_message_time": (last.created_at.isoformat() if last else None),
-                "unread_count": messaging.unread_count_for_thread(request.user, thread),
-            })
+            threads.append(
+                {
+                    "id": group.id,
+                    "group_id": group.id,
+                    "group_name": group.name,
+                    "last_message": (last.body[:120] if last else ""),
+                    "last_message_time": (last.created_at.isoformat() if last else None),
+                    "unread_count": messaging.unread_count_for_thread(request.user, thread),
+                }
+            )
         threads.sort(key=lambda t: t["last_message_time"] or "", reverse=True)
         return Response({"threads": threads})
 
 
 class MessageThreadDetailView(APIView):
     """Read or post messages in a group\'s chat thread."""
+
     permission_classes = [IsAuthenticated]
 
     def _get_thread(self, request, group_id):
         from ... import messaging
+
         try:
             group = Group.objects.get(pk=group_id)
         except Group.DoesNotExist:
@@ -686,7 +774,8 @@ class MessageThreadDetailView(APIView):
             for m in thread.messages.select_related("sender").order_by("created_at")[:500]
         ]
         ChatReadState.objects.update_or_create(
-            thread=thread, user=request.user,
+            thread=thread,
+            user=request.user,
             defaults={"last_read_at": tz.now()},
         )
         return Response({"messages": messages})
@@ -737,6 +826,7 @@ class MessageThreadDetailView(APIView):
 
 class BookListView(APIView):
     """Catalogue of library books with availability."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

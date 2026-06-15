@@ -4,11 +4,12 @@ Money amounts are UZS soʻm. Admin views are branch-scoped through
 ``branching``; students only ever see their own invoices; teachers get a
 read-only payment status board for the groups they teach.
 """
+
 import csv
 from datetime import date
 
 from django.contrib import messages
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -74,9 +75,12 @@ def admin_payments(request):
     branch_id = request.GET.get("branch", "")
     group_id = request.GET.get("group", "")
 
-    invoices = _scoped_invoices(request.user).select_related(
-        "student__admin", "student__branch", "group"
-    ).prefetch_related("payments").filter(period=period)
+    invoices = (
+        _scoped_invoices(request.user)
+        .select_related("student__admin", "student__branch", "group")
+        .prefetch_related("payments")
+        .filter(period=period)
+    )
     if status == "overdue":
         invoices = invoices.filter(
             status__in=[Invoice.STATUS_DUE, Invoice.STATUS_PARTIAL],
@@ -85,9 +89,7 @@ def admin_payments(request):
     elif status:
         invoices = invoices.filter(status=status)
     if branch_id:
-        invoices = invoices.filter(
-            Q(student__branch_id=branch_id) | Q(group__branch_id=branch_id)
-        )
+        invoices = invoices.filter(Q(student__branch_id=branch_id) | Q(group__branch_id=branch_id))
     if group_id:
         invoices = invoices.filter(group_id=group_id)
     invoices = invoices.order_by("student__admin__last_name", "student__admin__first_name")
@@ -128,13 +130,21 @@ def admin_payments(request):
 
 def _payments_csv(invoices, period):
     response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = (
-        f'attachment; filename="payments-{period:%Y-%m}.csv"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="payments-{period:%Y-%m}.csv"'
     writer = csv.writer(response)
     writer.writerow(
-        ["Student", "Login ID", "Group", "Month", "Amount", "Discount",
-         "Paid", "Balance", "Status", "Due date"]
+        [
+            "Student",
+            "Login ID",
+            "Group",
+            "Month",
+            "Amount",
+            "Discount",
+            "Paid",
+            "Balance",
+            "Status",
+            "Due date",
+        ]
     )
     for inv in invoices:
         writer.writerow(
@@ -192,8 +202,15 @@ def admin_collections(request):
         key, label = _bucket_for(inv)
         row = buckets.setdefault(
             key,
-            {"label": label, "expected": 0, "collected": 0, "outstanding": 0,
-             "students": 0, "overdue": 0, "partial": 0},
+            {
+                "label": label,
+                "expected": 0,
+                "collected": 0,
+                "outstanding": 0,
+                "students": 0,
+                "overdue": 0,
+                "partial": 0,
+            },
         )
         row["expected"] += due
         row["collected"] += paid
@@ -215,7 +232,9 @@ def admin_collections(request):
     # each ordered by the biggest outstanding balance.
     attention = []
     if not is_super:
-        flagged = [inv for inv in invoices if inv.is_overdue or inv.status == Invoice.STATUS_PARTIAL]
+        flagged = [
+            inv for inv in invoices if inv.is_overdue or inv.status == Invoice.STATUS_PARTIAL
+        ]
         flagged.sort(key=lambda i: (0 if i.is_overdue else 1, -float(i.balance)))
         attention = flagged[:50]
 
@@ -364,7 +383,9 @@ def admin_cancel_invoice(request, invoice_id):
     else:
         invoice.status = Invoice.STATUS_CANCELLED
         invoice.save(update_fields=["status", "updated_at"])
-        messages.success(request, f"Invoice for {invoice.student} ({invoice.period_label}) cancelled.")
+        messages.success(
+            request, f"Invoice for {invoice.student} ({invoice.period_label}) cancelled."
+        )
     return redirect(f"{reverse('admin_payments')}?month={invoice.period:%Y-%m}")
 
 
@@ -418,9 +439,9 @@ def staff_payments(request):
         )
         invoices = {
             inv.student_id: inv
-            for inv in Invoice.objects.filter(
-                group=group, period=period
-            ).prefetch_related("payments")
+            for inv in Invoice.objects.filter(group=group, period=period).prefetch_related(
+                "payments"
+            )
         }
         rows = []
         for enrollment in enrollments:
@@ -490,9 +511,7 @@ def payment_receipt(request, payment_id):
     if not request.user.is_authenticated:
         return redirect("/")
     payment = get_object_or_404(
-        Payment.objects.select_related(
-            "invoice__student__admin", "invoice__group", "received_by"
-        ),
+        Payment.objects.select_related("invoice__student__admin", "invoice__group", "received_by"),
         id=payment_id,
     )
     user_type = str(request.user.user_type)
@@ -511,5 +530,9 @@ def payment_receipt(request, payment_id):
     return render(
         request,
         "main_app/payment_receipt.html",
-        {"payment": payment, "invoice": payment.invoice, "page_title": f"Receipt {payment.receipt_no}"},
+        {
+            "payment": payment,
+            "invoice": payment.invoice,
+            "page_title": f"Receipt {payment.receipt_no}",
+        },
     )

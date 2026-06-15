@@ -12,11 +12,28 @@ from .models import ChatMessage, ChatReadState, Group
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_ATTACHMENT_EXTENSIONS = {
     # images
-    "jpg", "jpeg", "png", "gif", "webp", "bmp",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "bmp",
     # documents
-    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "txt",
+    "csv",
     # archives & media
-    "zip", "mp3", "mp4", "m4a", "wav",
+    "zip",
+    "mp3",
+    "mp4",
+    "m4a",
+    "wav",
 }
 
 

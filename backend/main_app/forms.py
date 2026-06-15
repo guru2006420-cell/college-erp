@@ -242,9 +242,7 @@ class AddStudentForm(CustomUserForm):
             if not branch:
                 cleaned_data["branch"] = group.branch
             elif branch.id != group.branch_id:
-                self.add_error(
-                    "branch", "Selected group does not belong to the selected branch."
-                )
+                self.add_error("branch", "Selected group does not belong to the selected branch.")
         return cleaned_data
 
     class Meta(CustomUserForm.Meta):
@@ -939,7 +937,9 @@ class RecordPaymentForm(FormSettings):
             "note": "Note (optional)",
         }
         widgets = {
-            "amount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "e.g. 200,000"}),
+            "amount": GroupedNumberInput(
+                attrs={"class": "form-control", "placeholder": "e.g. 200,000"}
+            ),
             "paid_on": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "note": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. receipt #, payer name"}
@@ -981,7 +981,9 @@ class ManualInvoiceForm(FormSettings):
             "note": "Note (optional)",
         }
         widgets = {
-            "amount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "e.g. 600,000"}),
+            "amount": GroupedNumberInput(
+                attrs={"class": "form-control", "placeholder": "e.g. 600,000"}
+            ),
             "discount": GroupedNumberInput(attrs={"class": "form-control", "placeholder": "0"}),
             "due_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "note": forms.TextInput(

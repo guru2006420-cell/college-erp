@@ -37,7 +37,9 @@ class EditResultView(LoginRequiredMixin, View):
         try:
             test_val = float(test)
             exam_val = float(exam)
-            if not (0 <= test_val <= StudentResult.TEST_MAX and 0 <= exam_val <= StudentResult.EXAM_MAX):
+            if not (
+                0 <= test_val <= StudentResult.TEST_MAX and 0 <= exam_val <= StudentResult.EXAM_MAX
+            ):
                 messages.warning(
                     request,
                     f"Scores out of range: test must be 0–{StudentResult.TEST_MAX}, "

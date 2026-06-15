@@ -55,11 +55,15 @@ class Command(BaseCommand):
 
     def _report_counts(self):
         self.stdout.write(self.style.HTTP_INFO("Per-branch counts"))
-        groups = Group.objects.values("branch__name").annotate(c=Count("id")).order_by("branch__name")
+        groups = (
+            Group.objects.values("branch__name").annotate(c=Count("id")).order_by("branch__name")
+        )
         students = (
             Student.objects.values("branch__name").annotate(c=Count("id")).order_by("branch__name")
         )
-        staff = Staff.objects.values("branch__name").annotate(c=Count("id")).order_by("branch__name")
+        staff = (
+            Staff.objects.values("branch__name").annotate(c=Count("id")).order_by("branch__name")
+        )
 
         def fmt(rows):
             return ", ".join(f"{r['branch__name'] or '∅ (none)'}={r['c']}" for r in rows) or "—"
@@ -72,9 +76,7 @@ class Command(BaseCommand):
 
     def _audit_students(self, fix):
         null_students = Student.objects.filter(branch__isnull=True)
-        self.stdout.write(
-            self.style.HTTP_INFO(f"Students with no branch: {null_students.count()}")
-        )
+        self.stdout.write(self.style.HTTP_INFO(f"Students with no branch: {null_students.count()}"))
         fixed = 0
         ambiguous = 0
         for student in null_students.select_related("admin"):
@@ -106,7 +108,11 @@ class Command(BaseCommand):
         )
         cross = 0
         for e in mismatched.select_related("student__admin", "group__branch"):
-            if e.student.branch_id and e.group.branch_id and e.student.branch_id != e.group.branch_id:
+            if (
+                e.student.branch_id
+                and e.group.branch_id
+                and e.student.branch_id != e.group.branch_id
+            ):
                 cross += 1
                 self.stdout.write(
                     self.style.WARNING(

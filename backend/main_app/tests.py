@@ -928,12 +928,12 @@ class BranchIsolationTests(TestCase):
             branching.filter_groups_for_user(self.super_admin_user, Group.objects.all()).count(), 2
         )
         self.assertEqual(
-            branching.filter_students_for_user(self.super_admin_user, Student.objects.all()).count(),
+            branching.filter_students_for_user(
+                self.super_admin_user, Student.objects.all()
+            ).count(),
             2,
         )
-        self.assertEqual(
-            branching.get_accessible_branches(self.super_admin_user).count(), 2
-        )
+        self.assertEqual(branching.get_accessible_branches(self.super_admin_user).count(), 2)
 
     # ── 2: branch admin sees only Branch A ──
     def test_branch_admin_scoped_to_branch_a(self):
@@ -994,9 +994,7 @@ class BranchIsolationTests(TestCase):
     def test_branch_admin_cannot_open_other_branch_group(self):
         self.client.force_login(self.branch_admin_user)
         response = self.client.get(reverse("admin_group_detail", args=[self.group_b.id]))
-        self.assertRedirects(
-            response, reverse("manage_group"), fetch_redirect_response=False
-        )
+        self.assertRedirects(response, reverse("manage_group"), fetch_redirect_response=False)
         # Own branch group works.
         ok = self.client.get(reverse("admin_group_detail", args=[self.group_a.id]))
         self.assertEqual(ok.status_code, 200)
@@ -1065,9 +1063,7 @@ class BranchIsolationTests(TestCase):
     @override_settings(**_BASE_OVERRIDES)
     def test_branch_admin_cannot_delete_other_branch_student(self):
         self.client.force_login(self.branch_admin_user)
-        response = self.client.post(
-            reverse("delete_student", args=[self.student_b.id])
-        )
+        response = self.client.post(reverse("delete_student", args=[self.student_b.id]))
         # Should redirect with an error, not delete.
         self.assertRedirects(response, reverse("manage_student"), fetch_redirect_response=False)
         self.assertTrue(Student.objects.filter(id=self.student_b.id).exists())
@@ -1076,9 +1072,7 @@ class BranchIsolationTests(TestCase):
     @override_settings(**_BASE_OVERRIDES)
     def test_branch_admin_cannot_delete_other_branch_teacher(self):
         self.client.force_login(self.branch_admin_user)
-        response = self.client.post(
-            reverse("delete_staff", args=[self.teacher_b.id])
-        )
+        response = self.client.post(reverse("delete_staff", args=[self.teacher_b.id]))
         self.assertRedirects(response, reverse("manage_staff"), fetch_redirect_response=False)
         self.assertTrue(Staff.objects.filter(id=self.teacher_b.id).exists())
 
@@ -1087,9 +1081,7 @@ class BranchIsolationTests(TestCase):
     def test_branch_admin_can_delete_own_branch_student(self):
         self.client.force_login(self.branch_admin_user)
         student_id = self.student_a.id
-        response = self.client.post(
-            reverse("delete_student", args=[student_id])
-        )
+        response = self.client.post(reverse("delete_student", args=[student_id]))
         self.assertRedirects(response, reverse("manage_student"), fetch_redirect_response=False)
         self.assertFalse(Student.objects.filter(id=student_id).exists())
 
@@ -1112,7 +1104,7 @@ class BranchIsolationTests(TestCase):
         from main_app.models import Admin
 
         self.client.force_login(self.super_admin_user)
-        response = self.client.post(
+        self.client.post(
             reverse("add_admin"),
             {
                 "first_name": "New",
@@ -1135,9 +1127,7 @@ class BranchIsolationTests(TestCase):
     @override_settings(**_BASE_OVERRIDES)
     def test_get_attendance_blocks_cross_branch_access(self):
         self.client.force_login(self.branch_admin_user)
-        response = self.client.post(
-            reverse("get_attendance"), {"group": str(self.group_b.id)}
-        )
+        response = self.client.post(reverse("get_attendance"), {"group": str(self.group_b.id)})
         self.assertEqual(response.status_code, 403)
 
     # ── 17: registration leads filtering by branch ──
@@ -1183,7 +1173,7 @@ class PaymentsTests(TestCase):
         )
 
     def setUp(self):
-        from main_app.models import Admin, Branch
+        from main_app.models import Branch
 
         self.branch_a = Branch.objects.create(name="Pay Branch A")
         self.branch_b = Branch.objects.create(name="Pay Branch B")
@@ -1271,9 +1261,7 @@ class PaymentsTests(TestCase):
 
         self._generate()
         self.assertTrue(
-            Notification.objects.filter(
-                recipient=self.student_a_user, category="payment"
-            ).exists()
+            Notification.objects.filter(recipient=self.student_a_user, category="payment").exists()
         )
 
     # ── Status transitions ──
@@ -1529,8 +1517,8 @@ class ScoreValidationTests(TestCase):
             {
                 "student_list": str(self.student.id),
                 "group": str(self.group.id),
-                "test": "95",   # > 40
-                "exam": "99",   # > 60
+                "test": "95",  # > 40
+                "exam": "99",  # > 60
             },
         )
         self.assertFalse(
@@ -1540,9 +1528,7 @@ class ScoreValidationTests(TestCase):
     def test_edit_result_rejects_out_of_scale_scores(self):
         from main_app.models import StudentResult
 
-        StudentResult.objects.create(
-            student=self.student, group=self.group, test=30, exam=50
-        )
+        StudentResult.objects.create(student=self.student, group=self.group, test=30, exam=50)
         self.client.force_login(self.teacher_user)
         self.client.post(
             reverse("edit_student_result"),
@@ -1609,17 +1595,13 @@ class StudentMobileApiTests(TestCase):
             name="Other Group", course=self.course, teacher=self.teacher
         )
 
-        student_user = self._make_user(
-            "ic90001@iceberg.internal", "3", "IC90001", date(2005, 5, 1)
-        )
+        student_user = self._make_user("ic90001@iceberg.internal", "3", "IC90001", date(2005, 5, 1))
         self.student = Student.objects.get(admin=student_user)
         self.student.course = self.course
         self.student.save()
         Enrollment.objects.create(student=self.student, group=self.group, is_active=True)
 
-        other_user = self._make_user(
-            "ic90002@iceberg.internal", "3", "IC90002", date(2005, 6, 1)
-        )
+        other_user = self._make_user("ic90002@iceberg.internal", "3", "IC90002", date(2005, 6, 1))
         self.other_student = Student.objects.get(admin=other_user)
         Enrollment.objects.create(
             student=self.other_student, group=self.other_group, is_active=True
@@ -1653,9 +1635,7 @@ class StudentMobileApiTests(TestCase):
         self.assertEqual(self.student.theme, Student.THEME_DARK)
 
     def test_settings_rejects_unknown_values(self):
-        res = self.api.patch(
-            "/api/v1/student/settings/", {"accent": "magenta"}, format="json"
-        )
+        res = self.api.patch("/api/v1/student/settings/", {"accent": "magenta"}, format="json")
         self.assertEqual(res.status_code, 400)
 
     def test_settings_blocked_for_teacher(self):
@@ -1738,15 +1718,11 @@ class StudentMobileApiTests(TestCase):
     def test_leaderboard_group_scope_reranks_and_flags_me(self):
         from main_app.models import LeaderboardSeason, LeaderboardSnapshot
 
-        season = LeaderboardSeason.objects.create(
-            name="Test Season", start_date=date.today()
-        )
+        season = LeaderboardSeason.objects.create(name="Test Season", start_date=date.today())
         LeaderboardSnapshot.objects.create(
             season=season, student=self.other_student, rank=1, score=99.0
         )
-        LeaderboardSnapshot.objects.create(
-            season=season, student=self.student, rank=2, score=88.0
-        )
+        LeaderboardSnapshot.objects.create(season=season, student=self.student, rank=2, score=88.0)
 
         res = self.api.get("/api/v1/leaderboard/?scope=group")
         self.assertEqual(res.status_code, 200)
@@ -1777,9 +1753,7 @@ class StudentMobileApiTests(TestCase):
             due_date=date.today() + timedelta(days=3),
             created_by=self.teacher,
         )
-        Notification.objects.create(
-            recipient=self.student.admin, message="hello", is_read=False
-        )
+        Notification.objects.create(recipient=self.student.admin, message="hello", is_read=False)
         day = VocabularyDay.objects.create(
             group=self.group,
             day_number=1,
@@ -1965,9 +1939,7 @@ class AdminManagementTests(TestCase):
         recovery_admin = Admin.objects.get(admin=self.recovery_user)
         self.client.force_login(self.super_user)
         self.client.post(reverse("delete_admin", args=[recovery_admin.id]))
-        self.assertFalse(
-            get_user_model().objects.filter(pk=self.recovery_user.pk).exists()
-        )
+        self.assertFalse(get_user_model().objects.filter(pk=self.recovery_user.pk).exists())
 
     def test_login_rejects_old_recovery_credentials_after_change(self):
         """The reported bug: change recovery creds, but old ones still log in.
@@ -2000,9 +1972,7 @@ class AdminManagementTests(TestCase):
             reverse("user_login"),
             {"identifier": "moved-recovery@example.com", "password": "FreshRecovery1"},
         )
-        self.assertEqual(
-            str(self.client.session.get("_auth_user_id")), str(self.recovery_user.pk)
-        )
+        self.assertEqual(str(self.client.session.get("_auth_user_id")), str(self.recovery_user.pk))
 
     def test_edit_admin_rejects_duplicate_email(self):
         self.client.force_login(self.super_user)
@@ -2146,8 +2116,8 @@ class MoneyInputParsingTests(TestCase):
         from main_app.forms import RecordPaymentForm
 
         html = str(RecordPaymentForm(invoice=None)["amount"])
-        self.assertIn('type="text"', html)   # not a stepped number input
-        self.assertIn("data-money", html)     # JS comma-grouping hook
+        self.assertIn('type="text"', html)  # not a stepped number input
+        self.assertIn("data-money", html)  # JS comma-grouping hook
         self.assertNotIn('step="1000"', html)
 
 
@@ -2158,8 +2128,12 @@ class CollectionsViewTests(TestCase):
 
     def _user(self, email, user_type, login_id=None):
         return get_user_model().objects.create_user(
-            email=email, password="Pass123!", first_name=email.split("@")[0],
-            last_name="X", user_type=user_type, login_id=login_id,
+            email=email,
+            password="Pass123!",
+            first_name=email.split("@")[0],
+            last_name="X",
+            user_type=user_type,
+            login_id=login_id,
         )
 
     def setUp(self):
@@ -2181,8 +2155,12 @@ class CollectionsViewTests(TestCase):
 
         ta = self._user("ta-coll@example.com", "2", login_id="TCC001")
         teacher = Staff.objects.get(admin=ta)
-        self.group_a = Group.objects.create(name="Group A", course=self.course, teacher=teacher, branch=self.branch_a)
-        self.group_b = Group.objects.create(name="Group B", course=self.course, teacher=teacher, branch=self.branch_b)
+        self.group_a = Group.objects.create(
+            name="Group A", course=self.course, teacher=teacher, branch=self.branch_a
+        )
+        self.group_b = Group.objects.create(
+            name="Group B", course=self.course, teacher=teacher, branch=self.branch_b
+        )
 
         def make_invoice(login_id, branch, group, amount, paid, overdue=False):
             su = self._user(f"s{login_id}@example.com", "3", login_id=login_id)
@@ -2193,8 +2171,12 @@ class CollectionsViewTests(TestCase):
             Enrollment.objects.create(student=student, group=group, is_active=True)
             due = self.today - timedelta(days=1) if overdue else self.today + timedelta(days=10)
             inv = Invoice.objects.create(
-                student=student, group=group, period=self.period,
-                amount=amount, discount=0, due_date=due,
+                student=student,
+                group=group,
+                period=self.period,
+                amount=amount,
+                discount=0,
+                due_date=due,
             )
             if paid:
                 Payment.objects.create(invoice=inv, amount=paid, method="cash")

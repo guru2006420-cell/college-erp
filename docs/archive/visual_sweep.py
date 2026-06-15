@@ -1,6 +1,7 @@
 """Visual sweep: login per role, screenshot redesigned pages at phone/desktop,
 flag console errors and horizontal overflow. Run: python visual_sweep.py
 """
+
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8000"
@@ -31,7 +32,11 @@ VIEWPORTS = [("phone", 390, 844), ("desktop", 1366, 900)]
 issues = []
 with sync_playwright() as p:
     browser = p.chromium.launch()
-    roles = {"TCRESP1": "teacher", "ICRESP1": "student", "responsive-admin@example.com": "admin"}
+    roles = {
+        "TCRESP1": "teacher",
+        "ICRESP1": "student",
+        "responsive-admin@example.com": "admin",
+    }
     for email, pages in PLANS.items():
         role = roles[email]
         ctx = browser.new_context(viewport={"width": 1366, "height": 900})

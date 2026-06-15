@@ -15,7 +15,6 @@ from rest_framework.views import APIView
 
 from ..models import (
     AttendanceReport,
-    Enrollment,
     Group,
     ResultFile,
     Student,
@@ -48,7 +47,9 @@ class StudentAttendanceSummaryView(APIView):
 
         student = _get_student(request)
         if student is None:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         today = tz.localdate()
         month_param = request.query_params.get("month", "")
@@ -56,9 +57,13 @@ class StudentAttendanceSummaryView(APIView):
             month_start = datetime.datetime.strptime(month_param, "%Y-%m").date()
         except ValueError:
             month_start = today.replace(day=1)
-        month_end = month_start.replace(day=calendar.monthrange(month_start.year, month_start.month)[1])
+        month_end = month_start.replace(
+            day=calendar.monthrange(month_start.year, month_start.month)[1]
+        )
 
-        reports = AttendanceReport.objects.filter(student=student).select_related("attendance__group")
+        reports = AttendanceReport.objects.filter(student=student).select_related(
+            "attendance__group"
+        )
         group_id = request.query_params.get("group_id")
         if group_id:
             reports = reports.filter(attendance__group_id=group_id)
@@ -97,7 +102,9 @@ class StudentAttendanceSummaryView(APIView):
                 attendance__date__gte=month_start, attendance__date__lte=month_end
             )
             .order_by("attendance__date")
-            .values_list("attendance__date", "status", "attendance__group_id", "attendance__group__name")
+            .values_list(
+                "attendance__date", "status", "attendance__group_id", "attendance__group__name"
+            )
         ]
 
         # ── 12-week trend ────────────────────────────────────────────────
@@ -107,7 +114,11 @@ class StudentAttendanceSummaryView(APIView):
             ws = week_start - datetime.timedelta(weeks=i)
             we = ws + datetime.timedelta(days=6)
             wk = [s for d, s in all_reports if ws <= d <= we]
-            pct = round(sum(1 for s in wk if s != AttendanceReport.ABSENT) / len(wk) * 100, 1) if wk else None
+            pct = (
+                round(sum(1 for s in wk if s != AttendanceReport.ABSENT) / len(wk) * 100, 1)
+                if wk
+                else None
+            )
             weekly.append({"start": ws.isoformat(), "pct": pct, "count": len(wk)})
 
         # ── Group filter options ─────────────────────────────────────────
@@ -127,23 +138,27 @@ class StudentAttendanceSummaryView(APIView):
             }
             for g in Group.objects.filter(
                 enrollment__student=student, enrollment__is_active=True, teacher__isnull=False
-            ).select_related("teacher__admin").distinct()
+            )
+            .select_related("teacher__admin")
+            .distinct()
         ]
 
-        return Response({
-            "overall_rate": overall_rate,
-            "present_pct": present_pct,
-            "present_count": present,
-            "late_count": late,
-            "absent_count": absent,
-            "total_count": total,
-            "streak_days": streak,
-            "month": month_start.strftime("%Y-%m"),
-            "days": month_reports,
-            "weekly_trend": weekly,
-            "groups": groups,
-            "teachers": teachers,
-        })
+        return Response(
+            {
+                "overall_rate": overall_rate,
+                "present_pct": present_pct,
+                "present_count": present,
+                "late_count": late,
+                "absent_count": absent,
+                "total_count": total,
+                "streak_days": streak,
+                "month": month_start.strftime("%Y-%m"),
+                "days": month_reports,
+                "weekly_trend": weekly,
+                "groups": groups,
+                "teachers": teachers,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +185,9 @@ class StudentResultFileListView(APIView):
     def get(self, request):
         student = _get_student(request)
         if student is None:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         files = []
         for rf in _student_result_files(student):
@@ -178,19 +195,21 @@ class StudentResultFileListView(APIView):
                 size = rf.file.size if rf.file else 0
             except (OSError, ValueError):
                 size = 0
-            files.append({
-                "id": rf.id,
-                "title": rf.title,
-                "description": rf.description,
-                "group_id": rf.group_id,
-                "group_name": rf.group.name if rf.group else None,
-                "filename": rf.filename,
-                "size": size,
-                "uploaded_at": rf.uploaded_at.isoformat(),
-                "download_url": request.build_absolute_uri(
-                    f"/api/v1/result-files/{rf.id}/download/"
-                ),
-            })
+            files.append(
+                {
+                    "id": rf.id,
+                    "title": rf.title,
+                    "description": rf.description,
+                    "group_id": rf.group_id,
+                    "group_name": rf.group.name if rf.group else None,
+                    "filename": rf.filename,
+                    "size": size,
+                    "uploaded_at": rf.uploaded_at.isoformat(),
+                    "download_url": request.build_absolute_uri(
+                        f"/api/v1/result-files/{rf.id}/download/"
+                    ),
+                }
+            )
         return Response({"files": files})
 
 
@@ -202,7 +221,9 @@ class StudentResultFileDownloadView(APIView):
     def get(self, request, pk):
         student = _get_student(request)
         if student is None:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
         rf = _student_result_files(student).filter(pk=pk).first()
         if rf is None or not rf.file:
             raise Http404
@@ -217,10 +238,10 @@ class StudentResultFileDownloadView(APIView):
 # ---------------------------------------------------------------------------
 
 SETTINGS_DEFAULTS = {
-    "theme": "system",          # system | light | dark
-    "accent": "ice",            # ice | cyan | blue | lime | purple | pink | orange
-    "font_size": "medium",      # small | medium | large
-    "language": "en",           # en | uz | ja
+    "theme": "system",  # system | light | dark
+    "accent": "ice",  # ice | cyan | blue | lime | purple | pink | orange
+    "font_size": "medium",  # small | medium | large
+    "language": "en",  # en | uz | ja
     "notifications": {
         "assignments": True,
         "vocabulary": True,
@@ -235,8 +256,16 @@ _FONT_VALUES = {"small", "medium", "large"}
 _LANGUAGE_VALUES = {"en", "uz", "ja"}
 
 # Student.theme uses "bright" where the app uses "light".
-_THEME_TO_MODEL = {"light": Student.THEME_BRIGHT, "dark": Student.THEME_DARK, "system": Student.THEME_SYSTEM}
-_THEME_FROM_MODEL = {Student.THEME_BRIGHT: "light", Student.THEME_DARK: "dark", Student.THEME_SYSTEM: "system"}
+_THEME_TO_MODEL = {
+    "light": Student.THEME_BRIGHT,
+    "dark": Student.THEME_DARK,
+    "system": Student.THEME_SYSTEM,
+}
+_THEME_FROM_MODEL = {
+    Student.THEME_BRIGHT: "light",
+    Student.THEME_DARK: "dark",
+    Student.THEME_SYSTEM: "system",
+}
 
 
 class StudentSettingsView(APIView):
@@ -257,13 +286,17 @@ class StudentSettingsView(APIView):
     def get(self, request):
         student = _get_student(request)
         if student is None:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
         return Response(self._payload(student))
 
     def patch(self, request):
         student = _get_student(request)
         if student is None:
-            return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         data = request.data
         stored = dict(student.app_settings or {})

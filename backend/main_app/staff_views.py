@@ -90,11 +90,13 @@ def staff_home(request):
         monthly_sessions.append(sessions)
         monthly_att_rate.append(round(present_r / total_r * 100) if total_r else 0)
 
-    monthly_chart_json = json.dumps({
-        "labels": monthly_labels,
-        "sessions": monthly_sessions,
-        "att_rate": monthly_att_rate,
-    })
+    monthly_chart_json = json.dumps(
+        {
+            "labels": monthly_labels,
+            "sessions": monthly_sessions,
+            "att_rate": monthly_att_rate,
+        }
+    )
 
     context = {
         "page_title": f"{staff.admin.first_name} {staff.admin.last_name}"
@@ -538,6 +540,8 @@ def add_book(request):
             "page_title": "Add Book",
         },
     )
+
+
 # ── Lending (issue / return) ───────────────────────────────────────────────────
 
 

@@ -3,6 +3,7 @@
 Run with: python smoke_ui.py
 Uses the real dev database read-only (GET requests only).
 """
+
 import os
 
 import django

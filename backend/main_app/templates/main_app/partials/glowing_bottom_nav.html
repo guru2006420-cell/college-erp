@@ -40,7 +40,7 @@
       {% url 'profile_hub' as u_profile %}
       <li class="glow-bottom-nav__item">
         <a href="{{ u_home }}" class="glow-bottom-nav__link {% if u_home == request.path %}is-active{% endif %}" aria-label="Open teacher dashboard">
-          <i class="fas fa-home glow-bottom-nav__icon"></i>
+          <i class="fas fa-th-large glow-bottom-nav__icon"></i>
           <span class="glow-bottom-nav__label">Home</span>
         </a>
       </li>
@@ -69,7 +69,7 @@
       {% url 'profile_hub' as u_profile %}
       <li class="glow-bottom-nav__item">
         <a href="{{ u_home }}" class="glow-bottom-nav__link {% if u_home == request.path %}is-active{% endif %}" aria-label="Open student dashboard">
-          <i class="fas fa-home glow-bottom-nav__icon"></i>
+          <i class="fas fa-th-large glow-bottom-nav__icon"></i>
           <span class="glow-bottom-nav__label">Home</span>
         </a>
       </li>

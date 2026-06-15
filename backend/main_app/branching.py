@@ -80,9 +80,7 @@ def is_recovery_admin(user):
     import os
 
     recovery_email = (
-        os.environ.get("RECOVERY_ADMIN_EMAIL", "iceberg.edu.center@gmail.com")
-        .strip()
-        .lower()
+        os.environ.get("RECOVERY_ADMIN_EMAIL", "iceberg.edu.center@gmail.com").strip().lower()
     )
     email = (getattr(user, "email", "") or "").strip().lower()
     return bool(email and email == recovery_email)
@@ -101,9 +99,7 @@ def get_accessible_branches(user):
 
     staff = _get_staff(user)
     if staff is not None:
-        return Branch.objects.filter(
-            Q(group__teacher=staff) | Q(staff_members=staff)
-        ).distinct()
+        return Branch.objects.filter(Q(group__teacher=staff) | Q(staff_members=staff)).distinct()
 
     student = _get_student(user)
     if student is not None:
@@ -124,9 +120,7 @@ def filter_branches_for_user(user, queryset):
     if profile is not None:
         return queryset.filter(id__in=profile.branches.values_list("id", flat=True))
     # Teachers/students don't manage branches.
-    return queryset.filter(
-        id__in=get_accessible_branches(user).values_list("id", flat=True)
-    )
+    return queryset.filter(id__in=get_accessible_branches(user).values_list("id", flat=True))
 
 
 def filter_students_for_user(user, queryset):
@@ -165,9 +159,7 @@ def filter_staff_for_user(user, queryset):
     if profile is not None:
         ids = profile.branches.values_list("id", flat=True)
         # Teachers in the branch OR teaching a group in the branch.
-        return queryset.filter(
-            Q(branch_id__in=ids) | Q(group__branch_id__in=ids)
-        ).distinct()
+        return queryset.filter(Q(branch_id__in=ids) | Q(group__branch_id__in=ids)).distinct()
 
     staff = _get_staff(user)
     if staff is not None:
@@ -191,9 +183,7 @@ def filter_groups_for_user(user, queryset):
 
     student = _get_student(user)
     if student is not None:
-        return queryset.filter(
-            enrollment__student=student, enrollment__is_active=True
-        ).distinct()
+        return queryset.filter(enrollment__student=student, enrollment__is_active=True).distinct()
 
     return queryset.none()
 
@@ -205,9 +195,7 @@ def filter_enrollments_for_user(user, queryset):
 
     profile = get_admin_profile(user)
     if profile is not None:
-        return queryset.filter(
-            group__branch_id__in=profile.branches.values_list("id", flat=True)
-        )
+        return queryset.filter(group__branch_id__in=profile.branches.values_list("id", flat=True))
 
     staff = _get_staff(user)
     if staff is not None:
@@ -227,9 +215,7 @@ def filter_attendance_for_user(user, queryset):
 
     profile = get_admin_profile(user)
     if profile is not None:
-        return queryset.filter(
-            group__branch_id__in=profile.branches.values_list("id", flat=True)
-        )
+        return queryset.filter(group__branch_id__in=profile.branches.values_list("id", flat=True))
 
     staff = _get_staff(user)
     if staff is not None:
@@ -249,9 +235,7 @@ def filter_results_for_user(user, queryset):
 
     profile = get_admin_profile(user)
     if profile is not None:
-        return queryset.filter(
-            group__branch_id__in=profile.branches.values_list("id", flat=True)
-        )
+        return queryset.filter(group__branch_id__in=profile.branches.values_list("id", flat=True))
 
     staff = _get_staff(user)
     if staff is not None:
@@ -280,9 +264,7 @@ def filter_registration_leads_for_user(user, queryset):
 
     profile = get_admin_profile(user)
     if profile is not None:
-        branch_names = list(
-            profile.branches.values_list("name", flat=True)
-        )
+        branch_names = list(profile.branches.values_list("name", flat=True))
         if not branch_names:
             return queryset.none()
         q = Q()
@@ -320,9 +302,7 @@ def user_can_access_group(user, group):
 
     student = _get_student(user)
     if student is not None:
-        return Enrollment.objects.filter(
-            student=student, group=group, is_active=True
-        ).exists()
+        return Enrollment.objects.filter(student=student, group=group, is_active=True).exists()
 
     return False
 

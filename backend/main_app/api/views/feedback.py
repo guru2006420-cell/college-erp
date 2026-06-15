@@ -49,7 +49,9 @@ class FeedbackView(APIView):
                     AdminStaffFeedbackSerializer(page, many=True).data
                 )
             else:
-                qs = FeedbackStudent.objects.select_related("student__admin").order_by("-created_at")
+                qs = FeedbackStudent.objects.select_related("student__admin").order_by(
+                    "-created_at"
+                )
                 page = paginator.paginate_queryset(qs, request)
                 return paginator.get_paginated_response(
                     AdminStudentFeedbackSerializer(page, many=True).data
@@ -65,10 +67,14 @@ class FeedbackView(APIView):
             try:
                 student = user.student
             except Student.DoesNotExist:
-                return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+                )
             text = request.data.get("feedback", "").strip()
             if not text:
-                return Response({"feedback": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"feedback": "This field is required."}, status=status.HTTP_400_BAD_REQUEST
+                )
             fb = FeedbackStudent.objects.create(student=student, feedback=text)
             return Response(StudentFeedbackSerializer(fb).data, status=status.HTTP_201_CREATED)
 
@@ -76,10 +82,14 @@ class FeedbackView(APIView):
             try:
                 staff = user.staff
             except Staff.DoesNotExist:
-                return Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+                )
             text = request.data.get("feedback", "").strip()
             if not text:
-                return Response({"feedback": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"feedback": "This field is required."}, status=status.HTTP_400_BAD_REQUEST
+                )
             fb = FeedbackStaff.objects.create(staff=staff, feedback=text)
             return Response(StaffFeedbackSerializer(fb).data, status=status.HTTP_201_CREATED)
 
@@ -88,13 +98,16 @@ class FeedbackView(APIView):
 
 class FeedbackDetailView(APIView):
     """Admin: PATCH to add a reply."""
+
     permission_classes = [IsAdmin]
 
     def patch(self, request, pk):
         feedback_type = request.query_params.get("type", "student")
         reply = request.data.get("reply", "").strip()
         if not reply:
-            return Response({"reply": "Reply text is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"reply": "Reply text is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if feedback_type == "staff":
             try:
@@ -105,7 +118,9 @@ class FeedbackDetailView(APIView):
             if not branching.filter_staff_for_user(
                 request.user, Staff.objects.filter(pk=fb.staff_id)
             ).exists():
-                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN
+                )
             fb.reply = reply
             fb.save(update_fields=["reply", "updated_at"])
             return Response(AdminStaffFeedbackSerializer(fb).data)
@@ -118,7 +133,9 @@ class FeedbackDetailView(APIView):
             if not branching.filter_students_for_user(
                 request.user, Student.objects.filter(pk=fb.student_id)
             ).exists():
-                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN
+                )
             fb.reply = reply
             fb.save(update_fields=["reply", "updated_at"])
             return Response(AdminStudentFeedbackSerializer(fb).data)

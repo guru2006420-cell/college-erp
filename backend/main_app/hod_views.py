@@ -130,9 +130,7 @@ def admin_home(request):
     # only their assigned branches.
     students_base = branching.filter_students_for_user(user, Student.objects.all())
     staff_base = branching.filter_staff_for_user(user, Staff.objects.all())
-    groups_base = branching.filter_groups_for_user(
-        user, Group.objects.filter(is_archived=False)
-    )
+    groups_base = branching.filter_groups_for_user(user, Group.objects.filter(is_archived=False))
 
     total_staff = staff_base.count()
     total_students = students_base.count()
@@ -277,20 +275,22 @@ def admin_home(request):
             ).count()
             _att_rate = round(_present_r / _total_r * 100) if _total_r else 0
 
-            _result_agg = (
-                StudentResult.objects.filter(
-                    group__branch=_branch,
-                    created_at__date__gte=_first,
-                    created_at__date__lt=_last,
-                )
-                .aggregate(avg=models.Avg(models.F("test") + models.F("exam")))
-            )
+            _result_agg = StudentResult.objects.filter(
+                group__branch=_branch,
+                created_at__date__gte=_first,
+                created_at__date__lt=_last,
+            ).aggregate(avg=models.Avg(models.F("test") + models.F("exam")))
             _avg_score = round(_result_agg["avg"] or 0)
 
-            _active_s = Enrollment.objects.filter(
-                group__branch=_branch,
-                is_active=True,
-            ).values("student").distinct().count()
+            _active_s = (
+                Enrollment.objects.filter(
+                    group__branch=_branch,
+                    is_active=True,
+                )
+                .values("student")
+                .distinct()
+                .count()
+            )
 
             # Composite health: 50% attendance, 35% results, 15% presence signal
             _presence = min(100, round((_active_s / max(total_students, 1)) * 100 * 3))
@@ -300,17 +300,23 @@ def admin_home(request):
             _avg_scores.append(_avg_score)
             _student_counts.append(_active_s)
 
-        branch_lines.append({
-            "label": _branch.name,
-            "health": [round(
-                _att_rates[_i] * 0.50 + _avg_scores[_i] * 0.35 +
-                min(100, round(_student_counts[_i] / max(total_students, 1) * 300)) * 0.15
-            ) for _i in range(6)],
-            "att": _att_rates,
-            "scores": _avg_scores,
-            "students": _student_counts,
-            "color": _BRANCH_COLORS[_bi % len(_BRANCH_COLORS)],
-        })
+        branch_lines.append(
+            {
+                "label": _branch.name,
+                "health": [
+                    round(
+                        _att_rates[_i] * 0.50
+                        + _avg_scores[_i] * 0.35
+                        + min(100, round(_student_counts[_i] / max(total_students, 1) * 300)) * 0.15
+                    )
+                    for _i in range(6)
+                ],
+                "att": _att_rates,
+                "scores": _avg_scores,
+                "students": _student_counts,
+                "color": _BRANCH_COLORS[_bi % len(_BRANCH_COLORS)],
+            }
+        )
 
     # Monthly totals (all branches) for admin-wide trend charts
     monthly_sessions_list = []
@@ -339,16 +345,20 @@ def admin_home(request):
         monthly_att_rate_list.append(round(_pr / _tr * 100) if _tr else 0)
         monthly_enroll_list.append(_new_s)
 
-    monthly_chart_json = json.dumps({
-        "labels": _month_labels,
-        "sessions": monthly_sessions_list,
-        "att_rate": monthly_att_rate_list,
-        "new_students": monthly_enroll_list,
-    })
-    branch_chart_json = json.dumps({
-        "labels": _month_labels,
-        "lines": branch_lines,
-    })
+    monthly_chart_json = json.dumps(
+        {
+            "labels": _month_labels,
+            "sessions": monthly_sessions_list,
+            "att_rate": monthly_att_rate_list,
+            "new_students": monthly_enroll_list,
+        }
+    )
+    branch_chart_json = json.dumps(
+        {
+            "labels": _month_labels,
+            "lines": branch_lines,
+        }
+    )
 
     branch_names = list(branching.get_accessible_branches(user).values_list("name", flat=True))
     if branching.is_super_admin(user):
@@ -369,7 +379,9 @@ def admin_home(request):
     )[:5]
     teacher_activity = (
         staff_base.select_related("admin", "course", "branch")
-        .annotate(active_groups_count=models.Count("group", filter=models.Q(group__is_archived=False)))
+        .annotate(
+            active_groups_count=models.Count("group", filter=models.Q(group__is_archived=False))
+        )
         .order_by("-admin__updated_at")[:5]
     )
     upcoming_classes = list(
@@ -380,8 +392,9 @@ def admin_home(request):
     upcoming_title = "Upcoming Classes"
     if not upcoming_classes:
         upcoming_classes = list(
-            groups_base.select_related("course", "teacher__admin", "branch")
-            .order_by("-updated_at")[:5]
+            groups_base.select_related("course", "teacher__admin", "branch").order_by(
+                "-updated_at"
+            )[:5]
         )
         upcoming_title = "Active Classes"
 
@@ -415,9 +428,11 @@ def admin_home(request):
                 "href": reverse("manage_student"),
             }
         )
-    for assignment in Assignment.objects.filter(group_id__in=group_ids).select_related(
-        "group", "created_by__admin"
-    ).order_by("-created_at")[:2]:
+    for assignment in (
+        Assignment.objects.filter(group_id__in=group_ids)
+        .select_related("group", "created_by__admin")
+        .order_by("-created_at")[:2]
+    ):
         recent_activity.append(
             {
                 "icon": "fa-tasks",
@@ -427,9 +442,11 @@ def admin_home(request):
                 "href": reverse("manage_group"),
             }
         )
-    for message in ChatMessage.objects.filter(thread__group_id__in=group_ids).select_related(
-        "sender", "thread__group"
-    ).order_by("-created_at")[:2]:
+    for message in (
+        ChatMessage.objects.filter(thread__group_id__in=group_ids)
+        .select_related("sender", "thread__group")
+        .order_by("-created_at")[:2]
+    ):
         recent_activity.append(
             {
                 "icon": "fa-comments",
@@ -593,9 +610,7 @@ def add_staff(request):
 
 @admin_only
 def add_student(request):
-    student_form = AddStudentForm(
-        request.POST or None, request.FILES or None, user=request.user
-    )
+    student_form = AddStudentForm(request.POST or None, request.FILES or None, user=request.user)
     context = {"form": student_form, "page_title": "Add Student"}
     if request.method == "POST":
         if student_form.is_valid():
@@ -714,10 +729,7 @@ def manage_registration_leads(request):
         for value, label in RegistrationLead.STATUS_CHOICES
     ]
     sources = (
-        base_qs.exclude(source="")
-        .values_list("source", flat=True)
-        .distinct()
-        .order_by("source")
+        base_qs.exclude(source="").values_list("source", flat=True).distinct().order_by("source")
     )
 
     return render(
@@ -1087,9 +1099,7 @@ def staff_feedback_message(request):
     else:
         feedback_id = request.POST.get("id")
         try:
-            feedback = get_object_or_404(
-                FeedbackStaff, id=feedback_id, staff__in=allowed_staff
-            )
+            feedback = get_object_or_404(FeedbackStaff, id=feedback_id, staff__in=allowed_staff)
             reply = request.POST.get("reply")
             feedback.reply = reply
             feedback.save()
@@ -1138,9 +1148,7 @@ def view_student_leave(request):
         else:
             status = -1
         try:
-            leave = get_object_or_404(
-                LeaveReportStudent, id=id, student__in=allowed_students
-            )
+            leave = get_object_or_404(LeaveReportStudent, id=id, student__in=allowed_students)
             leave.status = status
             leave.save()
             return HttpResponse(True)
@@ -1422,8 +1430,6 @@ def get_groups_for_teacher(request):
 # ── Admin account management ──────────────────────────────────────────────────
 
 
-
-
 @admin_only
 def add_admin(request):
     if not branching.is_super_admin(request.user):
@@ -1460,18 +1466,22 @@ def add_admin(request):
         if errors:
             for e in errors:
                 messages.error(request, e)
-            return render(request, "hod_template/add_admin_template.html", {
-                "all_branches": all_branches,
-                "page_title": "Add Admin",
-                "form_data": {
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "email": email,
-                    "gender": gender,
-                    "address": address,
+            return render(
+                request,
+                "hod_template/add_admin_template.html",
+                {
+                    "all_branches": all_branches,
+                    "page_title": "Add Admin",
+                    "form_data": {
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "email": email,
+                        "gender": gender,
+                        "address": address,
+                    },
+                    "selected_branch_ids": branch_ids,
                 },
-                "selected_branch_ids": branch_ids,
-            })
+            )
 
         try:
             user = CustomUser.objects.create_user(
@@ -1494,17 +1504,23 @@ def add_admin(request):
             admin_profile.branches.set(selected_branches)
 
             name = f"{first_name} {last_name}".strip()
-            messages.success(request, f'Admin account "{name}" created. They can log in with their email.')
+            messages.success(
+                request, f'Admin account "{name}" created. They can log in with their email.'
+            )
             return redirect(reverse("manage_admin"))
         except Exception as exc:
             messages.error(request, f"Could not create admin — {exc}")
 
-    return render(request, "hod_template/add_admin_template.html", {
-        "all_branches": all_branches,
-        "page_title": "Add Admin",
-        "form_data": {},
-        "selected_branch_ids": [],
-    })
+    return render(
+        request,
+        "hod_template/add_admin_template.html",
+        {
+            "all_branches": all_branches,
+            "page_title": "Add Admin",
+            "form_data": {},
+            "selected_branch_ids": [],
+        },
+    )
 
 
 @admin_only
@@ -1516,19 +1532,21 @@ def edit_admin(request, admin_id):
         messages.error(request, "Only a super admin can edit admin accounts.")
         return redirect(reverse("admin_home"))
 
-    admin_profile = get_object_or_404(
-        Admin.objects.select_related("admin"), id=admin_id
-    )
+    admin_profile = get_object_or_404(Admin.objects.select_related("admin"), id=admin_id)
     target = admin_profile.admin
     editing_self = target == request.user
 
     def _render(form_data):
-        return render(request, "hod_template/edit_admin_template.html", {
-            "page_title": "Edit Admin",
-            "admin_profile": admin_profile,
-            "editing_self": editing_self,
-            "form_data": form_data,
-        })
+        return render(
+            request,
+            "hod_template/edit_admin_template.html",
+            {
+                "page_title": "Edit Admin",
+                "admin_profile": admin_profile,
+                "editing_self": editing_self,
+                "form_data": form_data,
+            },
+        )
 
     if request.method == "POST":
         first_name = request.POST.get("first_name", "").strip()
@@ -1553,13 +1571,15 @@ def edit_admin(request, admin_id):
         if errors:
             for e in errors:
                 messages.error(request, e)
-            return _render({
-                "first_name": first_name,
-                "last_name": last_name,
-                "email": email,
-                "gender": gender,
-                "address": address,
-            })
+            return _render(
+                {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "gender": gender,
+                    "address": address,
+                }
+            )
 
         try:
             target.first_name = first_name
@@ -1586,13 +1606,15 @@ def edit_admin(request, admin_id):
         except Exception as exc:
             messages.error(request, f"Could not save changes — {exc}")
 
-    return _render({
-        "first_name": target.first_name,
-        "last_name": target.last_name,
-        "email": target.email,
-        "gender": target.gender,
-        "address": target.address,
-    })
+    return _render(
+        {
+            "first_name": target.first_name,
+            "last_name": target.last_name,
+            "email": target.email,
+            "gender": target.gender,
+            "address": target.address,
+        }
+    )
 
 
 @admin_only
@@ -1617,20 +1639,15 @@ def manage_admin(request):
     for admin_profile in admin_profiles:
         assigned_branches = list(admin_profile.branches.all())
         admin_profile.assigned_branch_ids = {branch.id for branch in assigned_branches}
-        admin_profile.assigned_branch_names = ", ".join(
-            branch.name for branch in assigned_branches
-        )
+        admin_profile.assigned_branch_names = ", ".join(branch.name for branch in assigned_branches)
         admin_profile.is_current_user = (
-            current_admin_profile is not None
-            and admin_profile.id == current_admin_profile.id
+            current_admin_profile is not None and admin_profile.id == current_admin_profile.id
         )
         admin_profile.is_recovery = branching.is_recovery_admin(admin_profile.admin)
         # The only protected case is the last remaining super admin — removing or
         # demoting it would lock everyone out. Otherwise any super admin can
         # change roles, edit credentials, and delete any account (incl. recovery).
-        admin_profile.is_last_super = (
-            admin_profile.is_super_admin and super_admin_count <= 1
-        )
+        admin_profile.is_last_super = admin_profile.is_super_admin and super_admin_count <= 1
         admin_profile.superadmin_toggle_locked = admin_profile.is_last_super
         admin_profile.can_edit_credentials = True
         admin_profile.can_delete = (
@@ -1816,7 +1833,7 @@ def delete_branch(request, branch_id):
     branch_name = branch.name
     try:
         branch.delete()
-        messages.success(request, f'Branch “{branch_name}” deleted.')
+        messages.success(request, f"Branch “{branch_name}” deleted.")
     except Exception as exc:
         messages.error(request, f"Could not delete branch — {exc}")
     return redirect(reverse("manage_branch"))

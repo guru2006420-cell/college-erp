@@ -8,7 +8,7 @@ All views in this module:
 """
 
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -41,18 +41,24 @@ from ..models import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _require_admin(request):
     """Return (True, None) if the user is an admin, else (False, 403 Response)."""
     if not request.user.is_authenticated:
-        return False, Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+        return False, Response(
+            {"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED
+        )
     if str(request.user.user_type) != "1":
-        return False, Response({"detail": "Admin access required."}, status=status.HTTP_403_FORBIDDEN)
+        return False, Response(
+            {"detail": "Admin access required."}, status=status.HTTP_403_FORBIDDEN
+        )
     return True, None
 
 
 # ---------------------------------------------------------------------------
 # 1 & 2.  Branches
 # ---------------------------------------------------------------------------
+
 
 class BranchListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -65,19 +71,23 @@ class BranchListView(APIView):
         qs = branching.filter_branches_for_user(request.user, Branch.objects.all())
         data = []
         for branch in qs.order_by("name"):
-            student_count = Student.objects.filter(
-                Q(branch=branch) | Q(enrollment__group__branch=branch)
-            ).distinct().count()
-            staff_count = Staff.objects.filter(
-                Q(branch=branch) | Q(group__branch=branch)
-            ).distinct().count()
-            data.append({
-                "id": branch.id,
-                "name": branch.name,
-                "address": branch.address,
-                "student_count": student_count,
-                "staff_count": staff_count,
-            })
+            student_count = (
+                Student.objects.filter(Q(branch=branch) | Q(enrollment__group__branch=branch))
+                .distinct()
+                .count()
+            )
+            staff_count = (
+                Staff.objects.filter(Q(branch=branch) | Q(group__branch=branch)).distinct().count()
+            )
+            data.append(
+                {
+                    "id": branch.id,
+                    "name": branch.name,
+                    "address": branch.address,
+                    "student_count": student_count,
+                    "staff_count": staff_count,
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -114,19 +124,23 @@ class BranchDetailView(APIView):
         branch, err = self._get_branch(request, pk)
         if err:
             return err
-        student_count = Student.objects.filter(
-            Q(branch=branch) | Q(enrollment__group__branch=branch)
-        ).distinct().count()
-        staff_count = Staff.objects.filter(
-            Q(branch=branch) | Q(group__branch=branch)
-        ).distinct().count()
-        return Response({
-            "id": branch.id,
-            "name": branch.name,
-            "address": branch.address,
-            "student_count": student_count,
-            "staff_count": staff_count,
-        })
+        student_count = (
+            Student.objects.filter(Q(branch=branch) | Q(enrollment__group__branch=branch))
+            .distinct()
+            .count()
+        )
+        staff_count = (
+            Staff.objects.filter(Q(branch=branch) | Q(group__branch=branch)).distinct().count()
+        )
+        return Response(
+            {
+                "id": branch.id,
+                "name": branch.name,
+                "address": branch.address,
+                "student_count": student_count,
+                "staff_count": staff_count,
+            }
+        )
 
     def patch(self, request, pk):
         branch, err = self._get_branch(request, pk)
@@ -165,6 +179,7 @@ class BranchDetailView(APIView):
 # 3 & 4.  Courses
 # ---------------------------------------------------------------------------
 
+
 class CourseListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -177,14 +192,18 @@ class CourseListView(APIView):
         data = []
         for course in qs:
             student_count = Student.objects.filter(course=course).count()
-            data.append({
-                "id": course.id,
-                "name": course.name,
-                "is_active": course.is_active,
-                "is_english": course.is_english,
-                "monthly_fee": str(course.monthly_fee) if course.monthly_fee is not None else None,
-                "student_count": student_count,
-            })
+            data.append(
+                {
+                    "id": course.id,
+                    "name": course.name,
+                    "is_active": course.is_active,
+                    "is_english": course.is_english,
+                    "monthly_fee": str(course.monthly_fee)
+                    if course.monthly_fee is not None
+                    else None,
+                    "student_count": student_count,
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -226,14 +245,16 @@ class CourseDetailView(APIView):
         if err:
             return err
         student_count = Student.objects.filter(course=course).count()
-        return Response({
-            "id": course.id,
-            "name": course.name,
-            "is_active": course.is_active,
-            "is_english": course.is_english,
-            "monthly_fee": str(course.monthly_fee) if course.monthly_fee is not None else None,
-            "student_count": student_count,
-        })
+        return Response(
+            {
+                "id": course.id,
+                "name": course.name,
+                "is_active": course.is_active,
+                "is_english": course.is_english,
+                "monthly_fee": str(course.monthly_fee) if course.monthly_fee is not None else None,
+                "student_count": student_count,
+            }
+        )
 
     def patch(self, request, pk):
         course, err = self._get_course(request, pk)
@@ -243,11 +264,13 @@ class CourseDetailView(APIView):
             if field in request.data:
                 setattr(course, field, request.data[field])
         course.save()
-        return Response({
-            "id": course.id,
-            "name": course.name,
-            "is_active": course.is_active,
-        })
+        return Response(
+            {
+                "id": course.id,
+                "name": course.name,
+                "is_active": course.is_active,
+            }
+        )
 
     def delete(self, request, pk):
         course, err = self._get_course(request, pk)
@@ -274,6 +297,7 @@ class CourseDetailView(APIView):
 # 5 & 6.  Sessions
 # ---------------------------------------------------------------------------
 
+
 class SessionListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -283,6 +307,7 @@ class SessionListView(APIView):
             return err
 
         from django.utils import timezone
+
         today = timezone.now().date()
         sessions = Session.objects.all().order_by("-start_year")
         data = [
@@ -311,7 +336,11 @@ class SessionListView(APIView):
             )
         session = Session.objects.create(start_year=start_year, end_year=end_year)
         return Response(
-            {"id": session.id, "start_year": str(session.start_year), "end_year": str(session.end_year)},
+            {
+                "id": session.id,
+                "start_year": str(session.start_year),
+                "end_year": str(session.end_year),
+            },
             status=status.HTTP_201_CREATED,
         )
 
@@ -326,20 +355,25 @@ class SessionDetailView(APIView):
         try:
             return Session.objects.get(pk=pk), None
         except Session.DoesNotExist:
-            return None, Response({"detail": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+            return None, Response(
+                {"detail": "Session not found."}, status=status.HTTP_404_NOT_FOUND
+            )
 
     def get(self, request, pk):
         session, err = self._get_session(request, pk)
         if err:
             return err
         from django.utils import timezone
+
         today = timezone.now().date()
-        return Response({
-            "id": session.id,
-            "start_year": str(session.start_year),
-            "end_year": str(session.end_year),
-            "is_current": session.start_year <= today <= session.end_year,
-        })
+        return Response(
+            {
+                "id": session.id,
+                "start_year": str(session.start_year),
+                "end_year": str(session.end_year),
+                "is_current": session.start_year <= today <= session.end_year,
+            }
+        )
 
     def patch(self, request, pk):
         session, err = self._get_session(request, pk)
@@ -350,7 +384,13 @@ class SessionDetailView(APIView):
         if "end_year" in request.data:
             session.end_year = request.data["end_year"]
         session.save()
-        return Response({"id": session.id, "start_year": str(session.start_year), "end_year": str(session.end_year)})
+        return Response(
+            {
+                "id": session.id,
+                "start_year": str(session.start_year),
+                "end_year": str(session.end_year),
+            }
+        )
 
     def delete(self, request, pk):
         session, err = self._get_session(request, pk)
@@ -363,6 +403,7 @@ class SessionDetailView(APIView):
 # ---------------------------------------------------------------------------
 # 7 & 8.  Subjects
 # ---------------------------------------------------------------------------
+
 
 class SubjectListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -377,9 +418,11 @@ class SubjectListView(APIView):
         # Branch admins: only subjects belonging to courses taught in their branches.
         if not branching.is_super_admin(request.user):
             accessible_branches = branching.get_accessible_branches(request.user)
-            course_ids = Group.objects.filter(
-                branch__in=accessible_branches
-            ).values_list("course_id", flat=True).distinct()
+            course_ids = (
+                Group.objects.filter(branch__in=accessible_branches)
+                .values_list("course_id", flat=True)
+                .distinct()
+            )
             qs = qs.filter(course_id__in=course_ids)
 
         data = [
@@ -434,20 +477,24 @@ class SubjectDetailView(APIView):
         try:
             return Subject.objects.select_related("course", "staff__admin").get(pk=pk), None
         except Subject.DoesNotExist:
-            return None, Response({"detail": "Subject not found."}, status=status.HTTP_404_NOT_FOUND)
+            return None, Response(
+                {"detail": "Subject not found."}, status=status.HTTP_404_NOT_FOUND
+            )
 
     def get(self, request, pk):
         subject, err = self._get_subject(request, pk)
         if err:
             return err
-        return Response({
-            "id": subject.id,
-            "name": subject.name,
-            "course_id": subject.course_id,
-            "course_name": subject.course.name,
-            "staff_id": subject.staff_id,
-            "staff_name": str(subject.staff),
-        })
+        return Response(
+            {
+                "id": subject.id,
+                "name": subject.name,
+                "course_id": subject.course_id,
+                "course_name": subject.course.name,
+                "staff_id": subject.staff_id,
+                "staff_name": str(subject.staff),
+            }
+        )
 
     def patch(self, request, pk):
         subject, err = self._get_subject(request, pk)
@@ -466,11 +513,13 @@ class SubjectDetailView(APIView):
             except Staff.DoesNotExist:
                 return Response({"detail": "Staff not found."}, status=status.HTTP_404_NOT_FOUND)
         subject.save()
-        return Response({
-            "id": subject.id,
-            "name": subject.name,
-            "course_name": subject.course.name,
-        })
+        return Response(
+            {
+                "id": subject.id,
+                "name": subject.name,
+                "course_name": subject.course.name,
+            }
+        )
 
     def delete(self, request, pk):
         subject, err = self._get_subject(request, pk)
@@ -484,6 +533,7 @@ class SubjectDetailView(APIView):
 # 9.  Group detail (admin view with enrolled students)
 # ---------------------------------------------------------------------------
 
+
 class GroupDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -492,18 +542,15 @@ class GroupDetailView(APIView):
         if not ok:
             return err
 
-        qs = Group.objects.select_related(
-            "course", "teacher__admin", "branch"
-        )
+        qs = Group.objects.select_related("course", "teacher__admin", "branch")
         qs = branching.filter_groups_for_user(request.user, qs)
         try:
             group = qs.get(pk=pk)
         except Group.DoesNotExist:
             return Response({"detail": "Group not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        enrollments = (
-            Enrollment.objects.filter(group=group, is_active=True)
-            .select_related("student__admin")
+        enrollments = Enrollment.objects.filter(group=group, is_active=True).select_related(
+            "student__admin"
         )
         students = [
             {
@@ -521,24 +568,27 @@ class GroupDetailView(APIView):
             else None
         )
 
-        return Response({
-            "id": group.id,
-            "name": group.name,
-            "course_name": group.course.name if group.course else None,
-            "session_name": None,  # Group model has no direct session FK
-            "staff_name": staff_name,
-            "branch_name": group.branch.name if group.branch else None,
-            "is_archived": group.is_archived,
-            "capacity": group.capacity,
-            "schedule": group.schedule,
-            "room": group.room,
-            "students": students,
-        })
+        return Response(
+            {
+                "id": group.id,
+                "name": group.name,
+                "course_name": group.course.name if group.course else None,
+                "session_name": None,  # Group model has no direct session FK
+                "staff_name": staff_name,
+                "branch_name": group.branch.name if group.branch else None,
+                "is_archived": group.is_archived,
+                "capacity": group.capacity,
+                "schedule": group.schedule,
+                "room": group.room,
+                "students": students,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
 # 10.  Enrollments
 # ---------------------------------------------------------------------------
+
 
 class EnrollmentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -627,7 +677,9 @@ class EnrollmentView(APIView):
         if enrollment_id:
             updated = scoped.filter(id=enrollment_id).update(is_active=False)
             if not updated:
-                return Response({"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND
+                )
             return Response({"detail": "Student unenrolled."})
 
         student_id = request.data.get("student_id")
@@ -648,6 +700,7 @@ class EnrollmentView(APIView):
 # 11.  Leave requests
 # ---------------------------------------------------------------------------
 
+
 class AdminLeaveListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -663,7 +716,9 @@ class AdminLeaveListView(APIView):
         include_staff = user_type_filter in (None, "staff")
 
         if include_students:
-            student_qs = LeaveReportStudent.objects.select_related("student__admin", "student__branch")
+            student_qs = LeaveReportStudent.objects.select_related(
+                "student__admin", "student__branch"
+            )
             # Branch scoping
             if not branching.is_super_admin(request.user):
                 accessible_students = branching.filter_students_for_user(
@@ -671,16 +726,18 @@ class AdminLeaveListView(APIView):
                 )
                 student_qs = student_qs.filter(student__in=accessible_students)
             for leave in student_qs.order_by("-created_at"):
-                data.append({
-                    "id": leave.id,
-                    "user_name": f"{leave.student.admin.first_name} {leave.student.admin.last_name}".strip(),
-                    "user_type": "student",
-                    "date": str(leave.date) if leave.date else None,
-                    "reason": leave.message,
-                    "status": leave.get_status_display(),
-                    "status_code": leave.status,
-                    "created_at": leave.created_at.isoformat(),
-                })
+                data.append(
+                    {
+                        "id": leave.id,
+                        "user_name": f"{leave.student.admin.first_name} {leave.student.admin.last_name}".strip(),
+                        "user_type": "student",
+                        "date": str(leave.date) if leave.date else None,
+                        "reason": leave.message,
+                        "status": leave.get_status_display(),
+                        "status_code": leave.status,
+                        "created_at": leave.created_at.isoformat(),
+                    }
+                )
 
         if include_staff:
             staff_qs = LeaveReportStaff.objects.select_related("staff__admin", "staff__branch")
@@ -690,16 +747,18 @@ class AdminLeaveListView(APIView):
                 )
                 staff_qs = staff_qs.filter(staff__in=accessible_staff)
             for leave in staff_qs.order_by("-created_at"):
-                data.append({
-                    "id": leave.id,
-                    "user_name": f"{leave.staff.admin.first_name} {leave.staff.admin.last_name}".strip(),
-                    "user_type": "staff",
-                    "date": str(leave.date) if leave.date else None,
-                    "reason": leave.message,
-                    "status": leave.get_status_display(),
-                    "status_code": leave.status,
-                    "created_at": leave.created_at.isoformat(),
-                })
+                data.append(
+                    {
+                        "id": leave.id,
+                        "user_name": f"{leave.staff.admin.first_name} {leave.staff.admin.last_name}".strip(),
+                        "user_type": "staff",
+                        "date": str(leave.date) if leave.date else None,
+                        "reason": leave.message,
+                        "status": leave.get_status_display(),
+                        "status_code": leave.status,
+                        "created_at": leave.created_at.isoformat(),
+                    }
+                )
 
         # Sort combined list by created_at descending (already strings — use iso)
         data.sort(key=lambda x: x["created_at"], reverse=True)
@@ -708,6 +767,7 @@ class AdminLeaveListView(APIView):
 
 class AdminLeaveDetailView(APIView):
     """PATCH to approve or reject a leave request."""
+
     permission_classes = [IsAuthenticated]
 
     STATUS_MAP = {
@@ -768,6 +828,7 @@ class AdminLeaveDetailView(APIView):
 # 12.  Attendance report
 # ---------------------------------------------------------------------------
 
+
 class AdminAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -781,7 +842,10 @@ class AdminAttendanceView(APIView):
         end_date = request.query_params.get("end_date")
 
         if not group_id:
-            return Response({"detail": "group_id query parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "group_id query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         group_qs = branching.filter_groups_for_user(
             request.user,
@@ -793,9 +857,8 @@ class AdminAttendanceView(APIView):
             return Response({"detail": "Group not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # Students enrolled in this group
-        enrollments = (
-            Enrollment.objects.filter(group=group, is_active=True)
-            .select_related("student__admin")
+        enrollments = Enrollment.objects.filter(group=group, is_active=True).select_related(
+            "student__admin"
         )
         students = [e.student for e in enrollments]
         total_students = len(students)
@@ -827,28 +890,33 @@ class AdminAttendanceView(APIView):
             absent = reports.filter(status=AttendanceReport.ABSENT).count()
             pct = round(present / total * 100, 1) if total > 0 else None
 
-            attendance_data.append({
-                "student_id": student.id,
-                "student_name": f"{student.admin.first_name} {student.admin.last_name}".strip(),
-                "total_sessions": total,
-                "present": present,
-                "late": late,
-                "absent": absent,
-                "attendance_percentage": pct,
-            })
+            attendance_data.append(
+                {
+                    "student_id": student.id,
+                    "student_name": f"{student.admin.first_name} {student.admin.last_name}".strip(),
+                    "total_sessions": total,
+                    "present": present,
+                    "late": late,
+                    "absent": absent,
+                    "attendance_percentage": pct,
+                }
+            )
 
-        return Response({
-            "group_id": group.id,
-            "group_name": group.name,
-            "total_students": total_students,
-            "sessions": sessions,
-            "attendance_data": attendance_data,
-        })
+        return Response(
+            {
+                "group_id": group.id,
+                "group_name": group.name,
+                "total_students": total_students,
+                "sessions": sessions,
+                "attendance_data": attendance_data,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
 # 13.  Stories  (DashboardStory)
 # ---------------------------------------------------------------------------
+
 
 class AdminStoriesListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -863,9 +931,9 @@ class AdminStoriesListView(APIView):
         # Branch scoping: filter stories whose target groups are in the admin's branches.
         if not branching.is_super_admin(request.user):
             accessible_branches = branching.get_accessible_branches(request.user)
-            accessible_group_ids = Group.objects.filter(
-                branch__in=accessible_branches
-            ).values_list("id", flat=True)
+            accessible_group_ids = Group.objects.filter(branch__in=accessible_branches).values_list(
+                "id", flat=True
+            )
             # Include stories targeting no specific group (global) OR a group in scope
             qs = qs.filter(
                 Q(target_groups__isnull=True) | Q(target_groups__id__in=accessible_group_ids)
@@ -874,17 +942,19 @@ class AdminStoriesListView(APIView):
         data = []
         for story in qs.order_by("-created_at"):
             target_group_ids = list(story.target_groups.values_list("id", flat=True))
-            data.append({
-                "id": story.id,
-                "title": story.title,
-                "body": story.body,
-                "story_type": story.story_type,
-                "is_active": story.is_active,
-                "expires_at": story.expires_at.isoformat() if story.expires_at else None,
-                "created_at": story.created_at.isoformat(),
-                "created_by": story.created_by.get_full_name() if story.created_by else None,
-                "target_group_ids": target_group_ids,
-            })
+            data.append(
+                {
+                    "id": story.id,
+                    "title": story.title,
+                    "body": story.body,
+                    "story_type": story.story_type,
+                    "is_active": story.is_active,
+                    "expires_at": story.expires_at.isoformat() if story.expires_at else None,
+                    "created_at": story.created_at.isoformat(),
+                    "created_by": story.created_by.get_full_name() if story.created_by else None,
+                    "target_group_ids": target_group_ids,
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -987,6 +1057,7 @@ class AdminStoriesDetailView(APIView):
 # 14.  Send notification
 # ---------------------------------------------------------------------------
 
+
 class AdminSendNotificationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1050,6 +1121,7 @@ class AdminSendNotificationView(APIView):
 # 15.  Invoice list / create
 # ---------------------------------------------------------------------------
 
+
 class AdminInvoiceListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1083,21 +1155,23 @@ class AdminInvoiceListView(APIView):
                 if inv.student and inv.student.admin
                 else ""
             )
-            data.append({
-                "id": inv.id,
-                "student_id": inv.student_id,
-                "student_name": student_name,
-                "amount": str(inv.amount),
-                "discount": str(inv.discount),
-                "total_due": str(inv.total_due),
-                "paid_amount": str(inv.paid_amount),
-                "balance": str(inv.balance),
-                "due_date": str(inv.due_date),
-                "period": str(inv.period),
-                "status": inv.status,
-                "status_display": inv.get_status_display(),
-                "note": inv.note,
-            })
+            data.append(
+                {
+                    "id": inv.id,
+                    "student_id": inv.student_id,
+                    "student_name": student_name,
+                    "amount": str(inv.amount),
+                    "discount": str(inv.discount),
+                    "total_due": str(inv.total_due),
+                    "paid_amount": str(inv.paid_amount),
+                    "balance": str(inv.balance),
+                    "due_date": str(inv.due_date),
+                    "period": str(inv.period),
+                    "status": inv.status,
+                    "status_display": inv.get_status_display(),
+                    "note": inv.note,
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -1151,6 +1225,7 @@ class AdminInvoiceListView(APIView):
 # ---------------------------------------------------------------------------
 # 16.  Record payment against invoice
 # ---------------------------------------------------------------------------
+
 
 class AdminRecordPaymentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1206,6 +1281,7 @@ class AdminRecordPaymentView(APIView):
 # Group CRUD (admin)
 # ---------------------------------------------------------------------------
 
+
 class AdminGroupListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1224,23 +1300,25 @@ class AdminGroupListView(APIView):
                 u = g.teacher.admin
                 teacher_name = f"{u.first_name} {u.last_name}".strip()
             enrolled = g.enrollments.count() if hasattr(g, "enrollments") else 0
-            data.append({
-                "id": g.id,
-                "name": g.name,
-                "course": g.course_id,
-                "course_name": g.course.name if g.course else None,
-                "teacher": g.teacher_id,
-                "teacher_name": teacher_name,
-                "branch": g.branch_id,
-                "branch_name": g.branch.name if g.branch else None,
-                "room": g.room,
-                "schedule": g.schedule,
-                "capacity": g.capacity,
-                "monthly_fee": str(g.monthly_fee) if g.monthly_fee is not None else None,
-                "start_date": g.start_date.isoformat() if g.start_date else None,
-                "is_archived": g.is_archived,
-                "enrolled_count": enrolled,
-            })
+            data.append(
+                {
+                    "id": g.id,
+                    "name": g.name,
+                    "course": g.course_id,
+                    "course_name": g.course.name if g.course else None,
+                    "teacher": g.teacher_id,
+                    "teacher_name": teacher_name,
+                    "branch": g.branch_id,
+                    "branch_name": g.branch.name if g.branch else None,
+                    "room": g.room,
+                    "schedule": g.schedule,
+                    "capacity": g.capacity,
+                    "monthly_fee": str(g.monthly_fee) if g.monthly_fee is not None else None,
+                    "start_date": g.start_date.isoformat() if g.start_date else None,
+                    "is_archived": g.is_archived,
+                    "enrolled_count": enrolled,
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -1250,9 +1328,13 @@ class AdminGroupListView(APIView):
         d = request.data
         # Validate required fields
         if not d.get("name"):
-            return Response({"name": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"name": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST
+            )
         if not d.get("course"):
-            return Response({"course": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"course": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             course = Course.objects.get(pk=d["course"])
@@ -1264,7 +1346,10 @@ class AdminGroupListView(APIView):
             try:
                 teacher = Staff.objects.get(pk=d["teacher"])
                 if not branching.user_can_access_group(request.user, Group(branch=teacher.branch)):
-                    return Response({"detail": "Access denied to that teacher's branch."}, status=status.HTTP_403_FORBIDDEN)
+                    return Response(
+                        {"detail": "Access denied to that teacher's branch."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
             except Staff.DoesNotExist:
                 return Response({"teacher": ["Not found."]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1274,7 +1359,10 @@ class AdminGroupListView(APIView):
                 branch = Branch.objects.get(pk=d["branch"])
                 accessible = branching.get_accessible_branches(request.user)
                 if not accessible.filter(pk=branch.pk).exists():
-                    return Response({"detail": "Access denied to that branch."}, status=status.HTTP_403_FORBIDDEN)
+                    return Response(
+                        {"detail": "Access denied to that branch."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
             except Branch.DoesNotExist:
                 return Response({"branch": ["Not found."]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1315,35 +1403,39 @@ class AdminGroupDetailView(APIView):
         for enr in g.enrollments.select_related("student__admin").all():
             s = enr.student
             u = s.admin
-            students.append({
-                "id": s.id,
-                "first_name": u.first_name,
-                "last_name": u.last_name,
-                "login_id": u.login_id,
-                "status": s.status,
-            })
+            students.append(
+                {
+                    "id": s.id,
+                    "first_name": u.first_name,
+                    "last_name": u.last_name,
+                    "login_id": u.login_id,
+                    "status": s.status,
+                }
+            )
         teacher_name = None
         if g.teacher and g.teacher.admin:
             u2 = g.teacher.admin
             teacher_name = f"{u2.first_name} {u2.last_name}".strip()
-        return Response({
-            "id": g.id,
-            "name": g.name,
-            "course": g.course_id,
-            "course_name": g.course.name if g.course else None,
-            "teacher": g.teacher_id,
-            "teacher_name": teacher_name,
-            "branch": g.branch_id,
-            "branch_name": g.branch.name if g.branch else None,
-            "room": g.room,
-            "schedule": g.schedule,
-            "capacity": g.capacity,
-            "monthly_fee": str(g.monthly_fee) if g.monthly_fee is not None else None,
-            "start_date": g.start_date.isoformat() if g.start_date else None,
-            "is_archived": g.is_archived,
-            "students": students,
-            "enrolled_count": len(students),
-        })
+        return Response(
+            {
+                "id": g.id,
+                "name": g.name,
+                "course": g.course_id,
+                "course_name": g.course.name if g.course else None,
+                "teacher": g.teacher_id,
+                "teacher_name": teacher_name,
+                "branch": g.branch_id,
+                "branch_name": g.branch.name if g.branch else None,
+                "room": g.room,
+                "schedule": g.schedule,
+                "capacity": g.capacity,
+                "monthly_fee": str(g.monthly_fee) if g.monthly_fee is not None else None,
+                "start_date": g.start_date.isoformat() if g.start_date else None,
+                "is_archived": g.is_archived,
+                "students": students,
+                "enrolled_count": len(students),
+            }
+        )
 
     def patch(self, request, pk):
         g, err = self._get_group(request, pk)
@@ -1382,7 +1474,9 @@ class AdminGroupDetailView(APIView):
                 try:
                     b = Branch.objects.get(pk=d["branch"])
                     if not branching.get_accessible_branches(request.user).filter(pk=b.pk).exists():
-                        return Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+                        return Response(
+                            {"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN
+                        )
                     g.branch = b
                 except Branch.DoesNotExist:
                     return Response({"branch": ["Not found."]}, status=status.HTTP_400_BAD_REQUEST)
@@ -1397,7 +1491,9 @@ class AdminGroupDetailView(APIView):
             return err
         if g.enrollments.exists():
             return Response(
-                {"detail": f"Cannot delete group '{g.name}': {g.enrollments.count()} student(s) enrolled. Archive it instead."},
+                {
+                    "detail": f"Cannot delete group '{g.name}': {g.enrollments.count()} student(s) enrolled. Archive it instead."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         g.delete()
@@ -1408,11 +1504,13 @@ class AdminGroupDetailView(APIView):
 # Admin user (HOD) management  — superadmin only
 # ---------------------------------------------------------------------------
 
+
 class AdminAdminListView(APIView):
     """
     GET  /admin/admins/        — list all admin users (superadmin only)
     POST /admin/admins/        — create a new branch admin
     """
+
     permission_classes = [IsAuthenticated]
 
     def _require_superadmin(self, request):
@@ -1446,19 +1544,21 @@ class AdminAdminListView(APIView):
             # profile row, not on CustomUser.
             profile = getattr(u, "admin", None)
             profile_branches = list(profile.branches.all()) if profile else []
-            data.append({
-                "id": u.id,
-                "email": u.email,
-                "first_name": u.first_name,
-                "last_name": u.last_name,
-                "full_name": f"{u.first_name} {u.last_name}".strip(),
-                "phone": getattr(u, "phone", ""),
-                "is_super_admin": bool(profile and profile.is_super_admin),
-                "is_active": u.is_active,
-                "date_joined": str(u.date_joined.date()),
-                "branch_ids": [b.id for b in profile_branches],
-                "branch_names": [b.name for b in profile_branches],
-            })
+            data.append(
+                {
+                    "id": u.id,
+                    "email": u.email,
+                    "first_name": u.first_name,
+                    "last_name": u.last_name,
+                    "full_name": f"{u.first_name} {u.last_name}".strip(),
+                    "phone": getattr(u, "phone", ""),
+                    "is_super_admin": bool(profile and profile.is_super_admin),
+                    "is_active": u.is_active,
+                    "date_joined": str(u.date_joined.date()),
+                    "branch_ids": [b.id for b in profile_branches],
+                    "branch_names": [b.name for b in profile_branches],
+                }
+            )
         return Response(data)
 
     def post(self, request):
@@ -1520,6 +1620,7 @@ class AdminAdminDetailView(APIView):
     PATCH  /admin/admins/<pk>/  — update admin details
     DELETE /admin/admins/<pk>/  — delete admin (cannot delete self or other superadmins)
     """
+
     permission_classes = [IsAuthenticated]
 
     def _get_target(self, request, pk):
@@ -1564,9 +1665,7 @@ class AdminAdminDetailView(APIView):
 
         if "branch_ids" in d:
             profile, _ = Admin.objects.get_or_create(admin=target)
-            profile.branches.set(
-                Branch.objects.filter(pk__in=(d["branch_ids"] or []))
-            )
+            profile.branches.set(Branch.objects.filter(pk__in=(d["branch_ids"] or [])))
 
         return Response({"id": target.id, "email": target.email})
 

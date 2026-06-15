@@ -15,6 +15,4 @@ class NonStrictManifestStaticFilesStorage(ManifestStaticFilesStorage):
     # pointing to .map files we don't ship. Django's post-processor raises
     # ValueError when it tries to hash those missing files. Keep only the
     # CSS url() and @import sub-patterns (first two); drop all sourcemap handling.
-    patterns = (
-        ("*.css", ManifestStaticFilesStorage.patterns[0][1][:2]),
-    )
+    patterns = (("*.css", ManifestStaticFilesStorage.patterns[0][1][:2]),)

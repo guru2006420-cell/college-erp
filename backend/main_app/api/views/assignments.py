@@ -34,7 +34,8 @@ class AssignmentListView(APIView):
         if user_type == "3":
             try:
                 ids = Enrollment.objects.filter(
-                    student=user.student, is_active=True,
+                    student=user.student,
+                    is_active=True,
                 ).values_list("group_id", flat=True)
                 return qs.filter(group_id__in=ids)
             except Student.DoesNotExist:
@@ -47,9 +48,7 @@ class AssignmentListView(APIView):
         context = {"request": request}
         if str(request.user.user_type) == "3":
             try:
-                subs = Submission.objects.filter(
-                    student=request.user.student, assignment__in=qs
-                )
+                subs = Submission.objects.filter(student=request.user.student, assignment__in=qs)
                 context["submission_map"] = {s.assignment_id: s for s in subs}
             except Student.DoesNotExist:
                 context["submission_map"] = {}
@@ -101,7 +100,8 @@ class AssignmentDetailView(generics.RetrieveAPIView):
         if user_type == "3":
             try:
                 ids = Enrollment.objects.filter(
-                    student=user.student, is_active=True,
+                    student=user.student,
+                    is_active=True,
                 ).values_list("group_id", flat=True)
                 return qs.filter(group_id__in=ids)
             except Student.DoesNotExist:

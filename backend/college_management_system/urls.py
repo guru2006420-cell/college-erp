@@ -5,7 +5,13 @@ from django.views.generic import RedirectView
 from django.views.static import serve
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import settings
-from main_app.flutter_view import flutter_app, deploy_flutter, download_apk, download_apk_32, download_page
+from main_app.flutter_view import (
+    flutter_app,
+    deploy_flutter,
+    download_apk,
+    download_apk_32,
+    download_page,
+)
 
 urlpatterns = [
     path("", include("main_app.urls")),

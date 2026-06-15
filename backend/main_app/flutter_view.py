@@ -94,10 +94,14 @@ def download_page(request):
         apk_size_mb = f"{os.path.getsize(apk_path) / 1_048_576:.0f}"
     if os.path.isfile(apk_32_path):
         apk_32_size_mb = f"{os.path.getsize(apk_32_path) / 1_048_576:.0f}"
-    return render(request, "main_app/download.html", {
-        "apk_size_mb": apk_size_mb,
-        "apk_32_size_mb": apk_32_size_mb,
-    })
+    return render(
+        request,
+        "main_app/download.html",
+        {
+            "apk_size_mb": apk_size_mb,
+            "apk_32_size_mb": apk_32_size_mb,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

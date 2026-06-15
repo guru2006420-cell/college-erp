@@ -25,7 +25,6 @@ from ..models import (
     VocabularyDay,
     VocabularyDayWord,
     VocabularyDayCompletion,
-    VocabularyQuizResult,
     DashboardStory,
     LeaderboardSeason,
     LeaderboardSnapshot,
@@ -98,8 +97,13 @@ class StudentRoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
-            "phone", "status", "course_id", "course_name",
-            "branch_name", "level", "group_names",
+            "phone",
+            "status",
+            "course_id",
+            "course_name",
+            "branch_name",
+            "level",
+            "group_names",
         ]
 
     def get_branch_name(self, obj):
@@ -107,9 +111,7 @@ class StudentRoleSerializer(serializers.ModelSerializer):
         return branch.name if branch else None
 
     def get_group_names(self, obj):
-        return list(
-            obj.enrollment_set.filter(is_active=True).values_list("group__name", flat=True)
-        )
+        return list(obj.enrollment_set.filter(is_active=True).values_list("group__name", flat=True))
 
 
 class MeSerializer(serializers.ModelSerializer):
@@ -499,6 +501,7 @@ class StaffLeaveSerializer(serializers.ModelSerializer):
 
 class AdminStudentLeaveSerializer(serializers.ModelSerializer):
     """Admin view — includes student name."""
+
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     student_id = serializers.IntegerField(source="student.id", read_only=True)
     student_name = serializers.SerializerMethodField()
@@ -506,9 +509,15 @@ class AdminStudentLeaveSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveReportStudent
         fields = [
-            "id", "student_id", "student_name",
-            "date", "message", "status", "status_display",
-            "created_at", "updated_at",
+            "id",
+            "student_id",
+            "student_name",
+            "date",
+            "message",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["student_id", "student_name", "created_at", "updated_at"]
 
@@ -519,6 +528,7 @@ class AdminStudentLeaveSerializer(serializers.ModelSerializer):
 
 class AdminStaffLeaveSerializer(serializers.ModelSerializer):
     """Admin view — includes staff name."""
+
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     staff_id = serializers.IntegerField(source="staff.id", read_only=True)
     staff_name = serializers.SerializerMethodField()
@@ -526,9 +536,15 @@ class AdminStaffLeaveSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveReportStaff
         fields = [
-            "id", "staff_id", "staff_name",
-            "date", "message", "status", "status_display",
-            "created_at", "updated_at",
+            "id",
+            "staff_id",
+            "staff_name",
+            "date",
+            "message",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["staff_id", "staff_name", "created_at", "updated_at"]
 
@@ -571,8 +587,16 @@ class AdminStudentFeedbackSerializer(StudentFeedbackSerializer):
     student_name = serializers.SerializerMethodField()
 
     class Meta(StudentFeedbackSerializer.Meta):
-        fields = ["id", "student_id", "student_name", "feedback", "reply", "has_reply",
-                  "created_at", "updated_at"]
+        fields = [
+            "id",
+            "student_id",
+            "student_name",
+            "feedback",
+            "reply",
+            "has_reply",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_student_name(self, obj):
         u = obj.student.admin
@@ -584,8 +608,16 @@ class AdminStaffFeedbackSerializer(StaffFeedbackSerializer):
     staff_name = serializers.SerializerMethodField()
 
     class Meta(StaffFeedbackSerializer.Meta):
-        fields = ["id", "staff_id", "staff_name", "feedback", "reply", "has_reply",
-                  "created_at", "updated_at"]
+        fields = [
+            "id",
+            "staff_id",
+            "staff_name",
+            "feedback",
+            "reply",
+            "has_reply",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_staff_name(self, obj):
         u = obj.staff.admin
@@ -614,14 +646,30 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = [
-            "id", "group", "group_name", "period", "amount", "discount",
-            "status", "status_display", "due_date", "note",
-            "payments", "amount_paid", "amount_due",
-            "created_at", "updated_at",
+            "id",
+            "group",
+            "group_name",
+            "period",
+            "amount",
+            "discount",
+            "status",
+            "status_display",
+            "due_date",
+            "note",
+            "payments",
+            "amount_paid",
+            "amount_due",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = [
-            "status_display", "group_name", "payments",
-            "amount_paid", "amount_due", "created_at", "updated_at",
+            "status_display",
+            "group_name",
+            "payments",
+            "amount_paid",
+            "amount_due",
+            "created_at",
+            "updated_at",
         ]
 
     def get_amount_paid(self, obj):
@@ -641,12 +689,24 @@ class RegistrationLeadSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegistrationLead
         fields = [
-            "id", "full_name", "first_name", "last_name",
-            "email", "phone", "parent_phone",
-            "program", "branch", "preferred_schedule",
-            "source", "social_handle",
-            "message", "status", "admin_notes",
-            "assigned_to", "created_at", "updated_at",
+            "id",
+            "full_name",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "parent_phone",
+            "program",
+            "branch",
+            "preferred_schedule",
+            "source",
+            "social_handle",
+            "message",
+            "status",
+            "admin_notes",
+            "assigned_to",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
 
@@ -670,6 +730,7 @@ class StaffStatsSerializer(serializers.Serializer):
 
 class AdminStudentSerializer(serializers.ModelSerializer):
     """Full student record for admin CRUD."""
+
     first_name = serializers.CharField(source="admin.first_name")
     last_name = serializers.CharField(source="admin.last_name")
     email = serializers.EmailField(source="admin.email", read_only=True)
@@ -684,21 +745,44 @@ class AdminStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
-            "id", "first_name", "last_name", "email", "login_id",
-            "gender", "date_of_birth", "address", "profile_pic_url",
-            "phone", "status", "level", "theme",
-            "course", "course_name", "branch", "branch_name",
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "login_id",
+            "gender",
+            "date_of_birth",
+            "address",
+            "profile_pic_url",
+            "phone",
+            "status",
+            "level",
+            "theme",
+            "course",
+            "course_name",
+            "branch",
+            "branch_name",
         ]
         read_only_fields = [
-            "email", "login_id", "gender", "date_of_birth", "address",
-            "profile_pic_url", "course_name", "branch_name",
+            "email",
+            "login_id",
+            "gender",
+            "date_of_birth",
+            "address",
+            "profile_pic_url",
+            "course_name",
+            "branch_name",
         ]
 
     def get_profile_pic_url(self, obj):
         if not obj.admin.profile_pic:
             return None
         request = self.context.get("request")
-        return request.build_absolute_uri(obj.admin.profile_pic.url) if request else obj.admin.profile_pic.url
+        return (
+            request.build_absolute_uri(obj.admin.profile_pic.url)
+            if request
+            else obj.admin.profile_pic.url
+        )
 
     def update(self, instance, validated_data):
         admin_data = validated_data.pop("admin", {})
@@ -711,6 +795,7 @@ class AdminStudentSerializer(serializers.ModelSerializer):
 
 class AdminStaffSerializer(serializers.ModelSerializer):
     """Full staff record for admin CRUD."""
+
     first_name = serializers.CharField(source="admin.first_name")
     last_name = serializers.CharField(source="admin.last_name")
     email = serializers.EmailField(source="admin.email", read_only=True)
@@ -724,21 +809,41 @@ class AdminStaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = [
-            "id", "first_name", "last_name", "email", "login_id",
-            "gender", "date_of_birth", "profile_pic_url",
-            "phone", "specialization", "is_active",
-            "course", "course_name", "branch", "branch_name",
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "login_id",
+            "gender",
+            "date_of_birth",
+            "profile_pic_url",
+            "phone",
+            "specialization",
+            "is_active",
+            "course",
+            "course_name",
+            "branch",
+            "branch_name",
         ]
         read_only_fields = [
-            "email", "login_id", "gender", "date_of_birth",
-            "profile_pic_url", "course_name", "branch_name",
+            "email",
+            "login_id",
+            "gender",
+            "date_of_birth",
+            "profile_pic_url",
+            "course_name",
+            "branch_name",
         ]
 
     def get_profile_pic_url(self, obj):
         if not obj.admin.profile_pic:
             return None
         request = self.context.get("request")
-        return request.build_absolute_uri(obj.admin.profile_pic.url) if request else obj.admin.profile_pic.url
+        return (
+            request.build_absolute_uri(obj.admin.profile_pic.url)
+            if request
+            else obj.admin.profile_pic.url
+        )
 
     def update(self, instance, validated_data):
         admin_data = validated_data.pop("admin", {})
@@ -770,8 +875,16 @@ class VocabularyDaySerializer(serializers.ModelSerializer):
     class Meta:
         model = VocabularyDay
         fields = [
-            "id", "day_number", "title", "level", "release_at",
-            "word_count", "is_released", "is_completed", "group_name", "words",
+            "id",
+            "day_number",
+            "title",
+            "level",
+            "release_at",
+            "word_count",
+            "is_released",
+            "is_completed",
+            "group_name",
+            "words",
         ]
 
     def get_is_completed(self, obj):
@@ -797,9 +910,15 @@ class LeaderboardEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaderboardSnapshot
         fields = [
-            "rank", "score", "attendance_pct", "homework_pct",
-            "quizzes_pct", "results_pct", "badge",
-            "student_name", "avatar_url",
+            "rank",
+            "score",
+            "attendance_pct",
+            "homework_pct",
+            "quizzes_pct",
+            "results_pct",
+            "badge",
+            "student_name",
+            "avatar_url",
         ]
 
     def get_student_name(self, obj):
@@ -863,9 +982,17 @@ class StorySerializer(serializers.ModelSerializer):
     class Meta:
         model = DashboardStory
         fields = [
-            "id", "title", "body", "story_type", "emoji", "bg_color",
-            "cover_image_url", "expires_at", "created_at",
-            "creator_name", "target_group_ids",
+            "id",
+            "title",
+            "body",
+            "story_type",
+            "emoji",
+            "bg_color",
+            "cover_image_url",
+            "expires_at",
+            "created_at",
+            "creator_name",
+            "target_group_ids",
         ]
 
     def get_cover_image_url(self, obj):
@@ -907,9 +1034,19 @@ class StaffVocabularyDaySerializer(serializers.ModelSerializer):
     class Meta:
         model = VocabularyDay
         fields = [
-            "id", "day_number", "title", "group", "group_name",
-            "level", "release_at", "release_scope", "notes",
-            "word_count", "is_released", "completion_count", "words",
+            "id",
+            "day_number",
+            "title",
+            "group",
+            "group_name",
+            "level",
+            "release_at",
+            "release_scope",
+            "notes",
+            "word_count",
+            "is_released",
+            "completion_count",
+            "words",
         ]
 
     def get_completion_count(self, obj):

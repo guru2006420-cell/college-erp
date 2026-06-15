@@ -15,6 +15,7 @@ sends an in-app notification + email (+ Eskiz SMS when configured) when:
 send_invoice_reminder() itself deduplicates to one reminder per invoice
 per day, so re-running the command is always safe.
 """
+
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
@@ -70,7 +71,9 @@ class Command(BaseCommand):
                     f"WOULD REMIND: {invoice.student} · {invoice.period_label} · "
                     f"balance {invoice.balance} · due {invoice.due_date}"
                 )
-            self.stdout.write(self.style.SUCCESS(f"{len(candidates)} reminder(s) pending (dry run)."))
+            self.stdout.write(
+                self.style.SUCCESS(f"{len(candidates)} reminder(s) pending (dry run).")
+            )
             return
 
         sent = sum(1 for invoice in candidates if send_invoice_reminder(invoice))

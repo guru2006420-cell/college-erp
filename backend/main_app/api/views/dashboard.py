@@ -12,9 +12,23 @@ from rest_framework.views import APIView
 
 from ... import branching
 from ...models import (
-    Assignment, AttendanceReport, Branch, Course, CustomUser, DashboardStory,
-    Enrollment, Group, Invoice, LeaderboardSeason, LeaderboardSnapshot, Notification,
-    Payment, RegistrationLead, Staff, Student, StudentResult, Submission,
+    Assignment,
+    AttendanceReport,
+    Branch,
+    Course,
+    CustomUser,
+    DashboardStory,
+    Enrollment,
+    Group,
+    Invoice,
+    LeaderboardSnapshot,
+    Notification,
+    Payment,
+    RegistrationLead,
+    Staff,
+    Student,
+    StudentResult,
+    Submission,
     VocabularyDay,
 )
 from ..permissions import IsAdmin
@@ -56,9 +70,7 @@ class AdminUserListView(generics.ListAPIView):
             allowed_students = branching.filter_students_for_user(
                 self.request.user, Student.objects.all()
             )
-            allowed_staff = branching.filter_staff_for_user(
-                self.request.user, Staff.objects.all()
-            )
+            allowed_staff = branching.filter_staff_for_user(self.request.user, Staff.objects.all())
             qs = qs.filter(Q(student__in=allowed_students) | Q(staff__in=allowed_staff))
         user_type = self.request.query_params.get("user_type")
         if user_type:
@@ -137,10 +149,12 @@ class AdminEnrollmentView(APIView):
 
 class AdminBranchListView(generics.ListAPIView):
     """Superadmin: list all branches; branch-admin: list own branches."""
+
     permission_classes = [IsAdmin]
 
     def get_serializer_class(self):
         from ..serializers import BranchSerializer
+
         return BranchSerializer
 
     def get_queryset(self):
@@ -165,14 +179,24 @@ class StudentDashboardView(APIView):
         try:
             student = user.student
         except Student.DoesNotExist:
-            return Response({
-                "rank": None, "tier": "", "streak_days": 0,
-                "attendance_percentage": None, "total_subjects": 0,
-                "average_score": None, "enrolled_groups": 0,
-                "pending_assignments": 0, "unread_notifications": 0,
-                "new_vocab_words": 0, "performance_trend": [],
-                "notices": [], "stories": [], "assignments_preview": [],
-            })
+            return Response(
+                {
+                    "rank": None,
+                    "tier": "",
+                    "streak_days": 0,
+                    "attendance_percentage": None,
+                    "total_subjects": 0,
+                    "average_score": None,
+                    "enrolled_groups": 0,
+                    "pending_assignments": 0,
+                    "unread_notifications": 0,
+                    "new_vocab_words": 0,
+                    "performance_trend": [],
+                    "notices": [],
+                    "stories": [],
+                    "assignments_preview": [],
+                }
+            )
 
         # Attendance
         reports = AttendanceReport.objects.filter(student=student)
@@ -181,9 +205,9 @@ class StudentDashboardView(APIView):
         att_pct = round(present / total * 100, 1) if total > 0 else None
 
         # Enrollments
-        enrollments = Enrollment.objects.filter(
-            student=student, is_active=True
-        ).select_related("group__course", "group__teacher__admin")
+        enrollments = Enrollment.objects.filter(student=student, is_active=True).select_related(
+            "group__course", "group__teacher__admin"
+        )
         enrolled_count = enrollments.count()
         course_ids = {e.group.course_id for e in enrollments if e.group.course_id}
         total_subjects = len(course_ids) if course_ids else enrolled_count
@@ -224,8 +248,7 @@ class StudentDashboardView(APIView):
         rank = None
         tier = ""
         snapshot = (
-            LeaderboardSnapshot.objects
-            .filter(student=student)
+            LeaderboardSnapshot.objects.filter(student=student)
             .select_related("season")
             .order_by("-season__start_date", "-id")
             .first()
@@ -235,20 +258,14 @@ class StudentDashboardView(APIView):
             tier = snapshot.badge
 
         # Notifications
-        unread_count = Notification.objects.filter(
-            recipient=user, is_read=False
-        ).count()
+        unread_count = Notification.objects.filter(recipient=user, is_read=False).count()
         notifications = Notification.objects.filter(recipient=user).order_by("-created_at")[:5]
-        notices = [
-            {"title": n.get_category_display(), "message": n.message}
-            for n in notifications
-        ]
+        notices = [{"title": n.get_category_display(), "message": n.message} for n in notifications]
 
         # Pending assignments (due in future, not yet submitted)
         now = tz.now()
         submitted_ids = set(
-            Submission.objects.filter(student=student)
-            .values_list("assignment_id", flat=True)
+            Submission.objects.filter(student=student).values_list("assignment_id", flat=True)
         )
         pending_qs = Assignment.objects.filter(
             group_id__in=enrolled_group_ids,
@@ -275,27 +292,32 @@ class StudentDashboardView(APIView):
         ).count()
 
         # Stories visible to this student
-        stories_qs = DashboardStory.objects.filter(
-            is_active=True
-        ).filter(
-            models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now)
-        ).prefetch_related("target_groups").order_by("-created_at")[:20]
+        stories_qs = (
+            DashboardStory.objects.filter(is_active=True)
+            .filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))
+            .prefetch_related("target_groups")
+            .order_by("-created_at")[:20]
+        )
         stories_out = []
         for s in stories_qs:
             target_ids = [g.id for g in s.target_groups.all()]
             if not target_ids or any(gid in target_ids for gid in enrolled_group_ids):
-                stories_out.append({
-                    "id": s.id,
-                    "title": s.title,
-                    "content": s.body,
-                    "story_type": s.story_type,
-                    "emoji": s.emoji,
-                    "image_url": (
-                        request.build_absolute_uri(s.safe_image_url) if s.safe_image_url else None
-                    ),
-                    "created_at": s.created_at.isoformat(),
-                    "author_name": s.created_by.get_full_name() if s.created_by else "",
-                })
+                stories_out.append(
+                    {
+                        "id": s.id,
+                        "title": s.title,
+                        "content": s.body,
+                        "story_type": s.story_type,
+                        "emoji": s.emoji,
+                        "image_url": (
+                            request.build_absolute_uri(s.safe_image_url)
+                            if s.safe_image_url
+                            else None
+                        ),
+                        "created_at": s.created_at.isoformat(),
+                        "author_name": s.created_by.get_full_name() if s.created_by else "",
+                    }
+                )
 
         # Outstanding balance (sum of unpaid amounts minus payments already made)
         unpaid_invoices = Invoice.objects.filter(
@@ -351,10 +373,8 @@ class AdminDashboardView(APIView):
             return Response(cached)
 
         students = branching.filter_students_for_user(user, Student.objects.all())
-        staff    = branching.filter_staff_for_user(user, Staff.objects.all())
-        groups   = branching.filter_groups_for_user(
-            user, Group.objects.filter(is_archived=False)
-        )
+        staff = branching.filter_staff_for_user(user, Staff.objects.all())
+        groups = branching.filter_groups_for_user(user, Group.objects.filter(is_archived=False))
         group_ids = list(groups.values_list("id", flat=True))
 
         today = datetime.date.today()
@@ -377,52 +397,55 @@ class AdminDashboardView(APIView):
             else:
                 spark.append(0)
 
-        totals = AttendanceReport.objects.filter(
-            attendance__group_id__in=group_ids
-        ).aggregate(
+        totals = AttendanceReport.objects.filter(attendance__group_id__in=group_ids).aggregate(
             total=Count("id"),
             present=Count("id", filter=Q(status=AttendanceReport.PRESENT)),
         )
-        avg_att = (
-            round(totals["present"] / totals["total"] * 100, 1)
-            if totals["total"] else None
-        )
+        avg_att = round(totals["present"] / totals["total"] * 100, 1) if totals["total"] else None
 
         leads = RegistrationLead.objects.all()
         total_branches = Branch.objects.count()
 
         recent_leads = []
-        for l in leads.order_by('-created_at')[:5]:
-            recent_leads.append({
-                'name':   l.name,
-                'phone':  l.phone,
-                'course': getattr(l, 'interested_course', '') or '',
-                'date':   l.created_at.strftime('%b %d') if getattr(l, 'created_at', None) else '',
-            })
+        for lead in leads.order_by("-created_at")[:5]:
+            recent_leads.append(
+                {
+                    "name": lead.name,
+                    "phone": lead.phone,
+                    "course": getattr(lead, "interested_course", "") or "",
+                    "date": lead.created_at.strftime("%b %d")
+                    if getattr(lead, "created_at", None)
+                    else "",
+                }
+            )
 
         recent_enrollments = []
-        for e in Enrollment.objects.filter(group_id__in=group_ids).select_related(
-            'student__admin', 'group'
-        ).order_by('-id')[:5]:
+        for e in (
+            Enrollment.objects.filter(group_id__in=group_ids)
+            .select_related("student__admin", "group")
+            .order_by("-id")[:5]
+        ):
             try:
                 student_name = e.student.admin.get_full_name() or str(e.student)
             except Exception:
                 student_name = str(e.student)
-            recent_enrollments.append({
-                'student': student_name,
-                'group':   e.group.name if e.group else '',
-            })
+            recent_enrollments.append(
+                {
+                    "student": student_name,
+                    "group": e.group.name if e.group else "",
+                }
+            )
 
         payload = {
-            "total_students":     students.count(),
-            "total_staff":        staff.count(),
-            "total_groups":       groups.count(),
-            "avg_attendance":     avg_att,
-            "new_leads":          leads.count(),
-            "total_leads":        leads.count(),
-            "total_branches":     total_branches,
-            "attendance_spark":   spark,
-            "recent_leads":       recent_leads,
+            "total_students": students.count(),
+            "total_staff": staff.count(),
+            "total_groups": groups.count(),
+            "avg_attendance": avg_att,
+            "new_leads": leads.count(),
+            "total_leads": leads.count(),
+            "total_branches": total_branches,
+            "attendance_spark": spark,
+            "recent_leads": recent_leads,
             "recent_enrollments": recent_enrollments,
         }
         cache.set(cache_key, payload, settings.DASHBOARD_CACHE_TTL)
@@ -446,19 +469,24 @@ class StaffStatsView(APIView):
             try:
                 staff = user.staff
             except Staff.DoesNotExist:
-                return Response({
-                    "total_students": 0, "total_groups": 0,
-                    "sessions_today": 0, "avg_attendance": None,
-                })
+                return Response(
+                    {
+                        "total_students": 0,
+                        "total_groups": 0,
+                        "sessions_today": 0,
+                        "avg_attendance": None,
+                    }
+                )
             from ...models import Attendance
+
             groups = Group.objects.filter(teacher=staff, is_archived=False)
             group_ids = list(groups.values_list("id", flat=True))
-            student_ids = Enrollment.objects.filter(
-                group_id__in=group_ids, is_active=True
-            ).values_list("student_id", flat=True).distinct()
-            sessions_today = Attendance.objects.filter(
-                group_id__in=group_ids, date=today
-            ).count()
+            student_ids = (
+                Enrollment.objects.filter(group_id__in=group_ids, is_active=True)
+                .values_list("student_id", flat=True)
+                .distinct()
+            )
+            sessions_today = Attendance.objects.filter(group_id__in=group_ids, date=today).count()
             total_reports = AttendanceReport.objects.filter(
                 attendance__group_id__in=group_ids
             ).count()
@@ -478,14 +506,11 @@ class StaffStatsView(APIView):
 
         if user_type == "1":
             from ...models import Attendance
+
             students = branching.filter_students_for_user(user, Student.objects.all())
-            groups = branching.filter_groups_for_user(
-                user, Group.objects.filter(is_archived=False)
-            )
+            groups = branching.filter_groups_for_user(user, Group.objects.filter(is_archived=False))
             group_ids = list(groups.values_list("id", flat=True))
-            sessions_today = Attendance.objects.filter(
-                group_id__in=group_ids, date=today
-            ).count()
+            sessions_today = Attendance.objects.filter(group_id__in=group_ids, date=today).count()
             total_reports = AttendanceReport.objects.filter(
                 attendance__group_id__in=group_ids
             ).count()

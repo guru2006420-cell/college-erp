@@ -1,0 +1,9 @@
+# Root-level ruff config — applies to manage.py symlink and any top-level files.
+# Must match backend/ruff.toml so the symlink at repo root and the real file in
+# backend/ are formatted identically (same line-length).
+line-length = 100
+target-version = "py311"
+
+extend-exclude = [
+    "backend",  # backend/ has its own ruff.toml; don't double-process
+]

@@ -3,7 +3,6 @@ import datetime
 from django.db import transaction
 from django.db.models import Q
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -23,6 +22,7 @@ class AdminLeadListView(APIView):
 
     def get(self, request):
         from rest_framework.pagination import PageNumberPagination
+
         qs = RegistrationLead.objects.order_by("-created_at")
         status_filter = request.query_params.get("status")
         search = request.query_params.get("search")
@@ -150,6 +150,7 @@ class AdminStudentListView(generics.ListAPIView):
         student = user.student
         if course_id:
             from ...models import Course as CourseModel
+
             try:
                 student.course = CourseModel.objects.get(pk=course_id)
             except CourseModel.DoesNotExist:
@@ -177,11 +178,15 @@ class AdminStudentDetailView(APIView):
         try:
             student = Student.objects.select_related("admin", "course", "branch").get(pk=pk)
         except Student.DoesNotExist:
-            return None, Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+            return None, Response(
+                {"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         if not branching.is_super_admin(request.user):
             allowed = branching.filter_students_for_user(request.user, Student.objects.all())
             if not allowed.filter(pk=pk).exists():
-                return None, Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+                return None, Response(
+                    {"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN
+                )
         return student, None
 
     def get(self, request, pk):
@@ -287,6 +292,7 @@ class AdminStaffListView(generics.ListAPIView):
         staff = user.staff
         if course_id:
             from ...models import Course as CourseModel
+
             try:
                 staff.course = CourseModel.objects.get(pk=course_id)
             except CourseModel.DoesNotExist:
@@ -317,7 +323,9 @@ class AdminStaffDetailView(APIView):
         if not branching.is_super_admin(request.user):
             allowed = branching.filter_staff_for_user(request.user, Staff.objects.all())
             if not allowed.filter(pk=pk).exists():
-                return None, Response({"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+                return None, Response(
+                    {"detail": "Access denied."}, status=status.HTTP_403_FORBIDDEN
+                )
         return staff, None
 
     def get(self, request, pk):

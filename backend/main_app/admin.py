@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from django.core.exceptions import ValidationError
 from .models import (
     Admin,
     CustomUser,
@@ -35,10 +34,12 @@ class AdminAdmin(admin.ModelAdmin):
 
     def full_name(self, obj):
         return obj.admin.get_full_name() or "—"
+
     full_name.short_description = "Name"
 
     def email(self, obj):
         return obj.admin.email
+
     email.short_description = "Email"
 
     def branch_list(self, obj):
@@ -47,6 +48,7 @@ class AdminAdmin(admin.ModelAdmin):
         names = ", ".join(obj.branches.values_list("name", flat=True)[:3])
         extra = max(obj.branches.count() - 3, 0)
         return f"{names} +{extra} more" if extra else names or "—"
+
     branch_list.short_description = "Branches"
 
     def save_model(self, request, obj, form, change):
@@ -177,7 +179,13 @@ class ChatThreadAdmin(admin.ModelAdmin):
 class ChatMessageAdmin(admin.ModelAdmin):
     list_display = ("thread", "sender", "created_at", "preview")
     list_filter = ("created_at",)
-    search_fields = ("body", "sender__email", "sender__first_name", "sender__last_name", "thread__group__name")
+    search_fields = (
+        "body",
+        "sender__email",
+        "sender__first_name",
+        "sender__last_name",
+        "thread__group__name",
+    )
     readonly_fields = ("created_at",)
 
     def preview(self, obj):

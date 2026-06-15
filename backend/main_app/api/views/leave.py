@@ -30,9 +30,7 @@ class LeaveView(APIView):
             paginator = PageNumberPagination()
             paginator.page_size = 20
             page = paginator.paginate_queryset(qs, request)
-            return paginator.get_paginated_response(
-                StudentLeaveSerializer(page, many=True).data
-            )
+            return paginator.get_paginated_response(StudentLeaveSerializer(page, many=True).data)
 
         if user_type == "2":
             try:
@@ -42,9 +40,7 @@ class LeaveView(APIView):
             paginator = PageNumberPagination()
             paginator.page_size = 20
             page = paginator.paginate_queryset(qs, request)
-            return paginator.get_paginated_response(
-                StaffLeaveSerializer(page, many=True).data
-            )
+            return paginator.get_paginated_response(StaffLeaveSerializer(page, many=True).data)
 
         # Admin: return combined leave from both students and staff with optional filters
         if user_type == "1":
@@ -55,9 +51,11 @@ class LeaveView(APIView):
 
             if leave_type == "staff":
                 qs = LeaveReportStaff.objects.select_related("staff__admin").order_by("-created_at")
-                qs = branching.filter_staff_leave_for_user(user, qs) if hasattr(
-                    branching, "filter_staff_leave_for_user"
-                ) else qs
+                qs = (
+                    branching.filter_staff_leave_for_user(user, qs)
+                    if hasattr(branching, "filter_staff_leave_for_user")
+                    else qs
+                )
                 if status_filter is not None:
                     qs = qs.filter(status=status_filter)
                 page = paginator.paginate_queryset(qs, request)
@@ -65,7 +63,9 @@ class LeaveView(APIView):
                     AdminStaffLeaveSerializer(page, many=True).data
                 )
             else:
-                qs = LeaveReportStudent.objects.select_related("student__admin").order_by("-created_at")
+                qs = LeaveReportStudent.objects.select_related("student__admin").order_by(
+                    "-created_at"
+                )
                 if status_filter is not None:
                     qs = qs.filter(status=status_filter)
                 page = paginator.paginate_queryset(qs, request)
@@ -83,7 +83,9 @@ class LeaveView(APIView):
             try:
                 student = user.student
             except Student.DoesNotExist:
-                return Response({"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Student profile not found."}, status=status.HTTP_403_FORBIDDEN
+                )
             serializer = StudentLeaveSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -94,7 +96,9 @@ class LeaveView(APIView):
             try:
                 staff = user.staff
             except Staff.DoesNotExist:
-                return Response({"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Staff profile not found."}, status=status.HTTP_403_FORBIDDEN
+                )
             serializer = StaffLeaveSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -106,6 +110,7 @@ class LeaveView(APIView):
 
 class LeaveDetailView(APIView):
     """Admin: PATCH to approve (status=1) or reject (status=-1)."""
+
     permission_classes = [IsAdmin]
 
     def patch(self, request, pk):
@@ -128,7 +133,9 @@ class LeaveDetailView(APIView):
             if not branching.filter_staff_for_user(
                 request.user, Staff.objects.filter(pk=leave.staff_id)
             ).exists():
-                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN
+                )
             leave.status = new_status
             leave.save(update_fields=["status", "updated_at"])
             return Response(AdminStaffLeaveSerializer(leave).data)
@@ -141,7 +148,9 @@ class LeaveDetailView(APIView):
             if not branching.filter_students_for_user(
                 request.user, Student.objects.filter(pk=leave.student_id)
             ).exists():
-                return Response({"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "Outside your branch scope."}, status=status.HTTP_403_FORBIDDEN
+                )
             leave.status = new_status
             leave.save(update_fields=["status", "updated_at"])
             return Response(AdminStudentLeaveSerializer(leave).data)

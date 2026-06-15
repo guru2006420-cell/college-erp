@@ -118,12 +118,16 @@ def registration_leads_receiver(request):
         return JsonResponse({"detail": "Payload must be an object."}, status=400)
 
     expected_token = getattr(settings, "REGISTRATION_LEADS_API_TOKEN", "").strip()
-    if expected_token and not secrets.compare_digest(_request_token(request, payload), expected_token):
+    if expected_token and not secrets.compare_digest(
+        _request_token(request, payload), expected_token
+    ):
         return JsonResponse({"detail": "Unauthorized"}, status=401)
 
     first_name = _first_value(payload, "first_name", "firstName", "given_name", "firstname")
     last_name = _first_value(payload, "last_name", "lastName", "family_name", "lastname", "surname")
-    full_name = _first_value(payload, "full_name", "fullName", "name", "student_name", "studentName")
+    full_name = _first_value(
+        payload, "full_name", "fullName", "name", "student_name", "studentName"
+    )
     if not full_name:
         full_name = " ".join(part for part in [first_name, last_name] if part).strip()
 

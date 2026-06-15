@@ -54,13 +54,13 @@ class EmailBackend(ModelBackend):
         """Accept older STA0001/STU0001 profile IDs during migration."""
         upper_identifier = identifier.upper()
         if upper_identifier.startswith("STA") and upper_identifier[3:].isdigit():
-            staff = Staff.objects.select_related("admin").filter(
-                id=int(upper_identifier[3:])
-            ).first()
+            staff = (
+                Staff.objects.select_related("admin").filter(id=int(upper_identifier[3:])).first()
+            )
             return staff.admin if staff else None
         if upper_identifier.startswith("STU") and upper_identifier[3:].isdigit():
-            student = Student.objects.select_related("admin").filter(
-                id=int(upper_identifier[3:])
-            ).first()
+            student = (
+                Student.objects.select_related("admin").filter(id=int(upper_identifier[3:])).first()
+            )
             return student.admin if student else None
         return None
