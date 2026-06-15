@@ -29,7 +29,7 @@
         <div class="nav-item">
             {% url 'admin_home' as admin_home %}
             <a href="{{ admin_home }}" class="nav-link {% if admin_home == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-tachometer-alt"></i>
+                <i class="nav-icon fas fa-th-large"></i>
                 <span class="nav-text">Dashboard</span>
             </a>
         </div>
@@ -199,7 +199,7 @@
         <div class="nav-item">
             {% url 'staff_home' as staff_home %}
             <a href="{{ staff_home }}" class="nav-link {% if staff_home == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-tachometer-alt"></i>
+                <i class="nav-icon fas fa-th-large"></i>
                 <span class="nav-text">Dashboard</span>
             </a>
         </div>
@@ -333,7 +333,7 @@
         <div class="nav-item">
             {% url 'student_home' as student_home %}
             <a href="{{ student_home }}" class="nav-link {% if student_home == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-tachometer-alt"></i>
+                <i class="nav-icon fas fa-th-large"></i>
                 <span class="nav-text">Dashboard</span>
             </a>
         </div>

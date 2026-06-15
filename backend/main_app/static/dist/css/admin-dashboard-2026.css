@@ -315,7 +315,25 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border-radius: 16px;
+  border-radius: 14px;
+}
+/* Feature icons: lightweight cyan-tint tile with a cyan glyph (was a heavy
+   navy→cyan gradient with a white glyph). */
+.admin-metric-card__icon,
+.admin-activity-item__icon {
+  color: var(--ib-cyan);
+  background: rgba(0,207,232,.12);
+  transition: background .16s ease, transform .16s ease;
+}
+.dark-mode .admin-metric-card__icon,
+.dark-mode .admin-activity-item__icon,
+[data-theme="dark"] .admin-metric-card__icon,
+[data-theme="dark"] .admin-activity-item__icon {
+  color: #67E8F9;
+  background: rgba(0,207,232,.18);
+}
+/* Person avatars keep a solid fill so the white initials stay legible. */
+.admin-avatar-sm {
   color: #fff;
   background: linear-gradient(135deg, var(--ib-navy), var(--ib-cyan));
 }
@@ -481,10 +499,22 @@
   justify-content: center;
   width: 46px;
   height: 46px;
-  border-radius: 16px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--ib-navy), var(--ib-cyan));
-  box-shadow: 0 12px 26px rgba(0, 207, 232, .18);
+  border-radius: 14px;
+  color: var(--ib-cyan);
+  background: rgba(0,207,232,.12);
+  box-shadow: none;
+  transition: background .16s ease, transform .16s ease, color .16s ease;
+}
+.dark-mode .admin-quick-action span,
+[data-theme="dark"] .admin-quick-action span {
+  color: #67E8F9;
+  background: rgba(0,207,232,.18);
+}
+/* Interactive: the icon lifts and brightens with the card on hover. */
+.admin-quick-action:hover span,
+.admin-quick-action:focus span {
+  background: rgba(0,207,232,.22);
+  transform: scale(1.06);
 }
 
 .admin-quick-action strong,
@@ -556,6 +586,21 @@
   background: rgba(0,207,232,.12);
   font-size: 12px;
   font-weight: 950;
+}
+
+/* ── Dark-mode text visibility ───────────────────────────────────────────
+   These elements use --ib-ocean (a dark blue) which does NOT flip in dark
+   mode, so they were nearly invisible on the dark background. Map them to a
+   bright cyan in dark mode. */
+.dark-mode .admin-link,
+[data-theme="dark"] .admin-link,
+.dark-mode .admin-soft-badge,
+[data-theme="dark"] .admin-soft-badge,
+.dark-mode .admin-ring,
+[data-theme="dark"] .admin-ring,
+.dark-mode .admin-class-row__date,
+[data-theme="dark"] .admin-class-row__date {
+  color: #67E8F9;
 }
 
 .admin-chart-stage {
