@@ -13,7 +13,12 @@ class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient._();
 
-  final _storage = const FlutterSecureStorage();
+  // EncryptedSharedPreferences avoids the Android Keystore lock-up that occurs
+  // on MIUI/EMUI/OneUI when the Keystore provider is busy or uninitialized —
+  // matches the backend used in AuthNotifier so token reads stay consistent.
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   // In-memory copies so requests stay authenticated even if a per-request
   // secure-storage read is slow/flaky (notably on web, where the storage
@@ -37,8 +42,10 @@ class ApiClient {
     final d = Dio(
       BaseOptions(
         baseUrl: kBaseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
+        // Generous timeouts for slow first-connect on weak mobile networks
+        // (our user base is on high-latency mobile data) through Cloudflare.
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -125,8 +132,19 @@ class ApiClient {
   /// Always completes _tokensLoaded so waiting requests are unblocked.
   Future<void> loadTokens() async {
     try {
-      _access = await _storage.read(key: 'access_token');
-      _refresh = await _storage.read(key: 'refresh_token');
+      // Per-read timeouts ensure _tokensLoaded completes promptly even when the
+      // storage backend is slow on first access. Without these, a slow read can
+      // consume the auth interceptor's 6s budget, leaving too little time for
+      // the TCP+TLS handshake on a slow network — surfacing as connectionError.
+      _access = await _storage
+          .read(key: 'access_token')
+          .timeout(const Duration(seconds: 5));
+      _refresh = await _storage
+          .read(key: 'refresh_token')
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Storage timed out or errored — continue with null tokens; the user
+      // will simply be asked to log in again.
     } finally {
       if (!_tokensLoaded.isCompleted) _tokensLoaded.complete();
     }
